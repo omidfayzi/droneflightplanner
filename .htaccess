@@ -1,0 +1,13 @@
+RewriteEngine On
+
+RewriteRule ^login$ /sso.php [L]
+
+RewriteRule ^dashboard$ /pages/dashboard.php [L]
+RewriteRule ^profile$ /pages/profile.php [L]
+RewriteRule ^set-plot$ /pages/set-plot.php [L]
+RewriteRule ^set-plot-overview$ /pages/set-plot-overview.php [L]
+RewriteRule ^set-pref-overview$ /pages/set-pref-overview.php [L]
+RewriteRule ^set-pref$ /pages/set-pref.php [L]
+RewriteRule ^link-pref$ /pages/link-pref.php [L]
+RewriteRule ^link-pref-overview$ /pages/link-pref-overview.php [L]
+RewriteRule ^welcome$ /pages/landing-page.php [L]
