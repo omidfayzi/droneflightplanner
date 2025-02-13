@@ -31,17 +31,17 @@ $bodyContent = "
         <div class='max-w-5xl mx-auto px-4'>
             <div class='grid md:grid-cols-3 gap-8'>
                 <div class='text-center'>
-                    <i class='fa-solid fa-rocket text-5xl text-blue-700 mb-4'></i>
+                    <img src='/images/fast_icon.svg' alt='Holding the Drones' class='w-24 mx-auto mb-4'>
                     <h2 class='text-2xl font-bold mb-2'>Snel</h2>
                     <p class='text-gray-700'>Ervaar een snelle en efficiënte vluchtplanning.</p>
                 </div>
                 <div class='text-center'>
-                    <i class='fa-solid fa-shield-halved text-5xl text-blue-700 mb-4'></i>
+                    <img src='/images/secure_icon.svg' alt='Holding the Drones' class='w-24 mx-auto mb-4'>
                     <h2 class='text-2xl font-bold mb-2'>Veilig</h2>
                     <p class='text-gray-700'>Onze tools zorgen voor maximale veiligheid.</p>
                 </div>
                 <div class='text-center'>
-                    <i class='fa-solid fa-chart-line text-5xl text-blue-700 mb-4'></i>
+                    <img src='/images/organized_icon.svg' alt='Holding the Drones' class='w-24 mx-auto mb-4'>
                     <h2 class='text-2xl font-bold mb-2'>Overzichtelijk</h2>
                     <p class='text-gray-700'>Altijd een helder overzicht van jouw operaties.</p>
                 </div>
