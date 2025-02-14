@@ -1,11 +1,9 @@
 <?php
 include './functions/functions.php';
 
-// We gebruiken de huidige settings voor setPlotName en setPrefName (hier niet nodig op de welkomstpagina)
 $includeSetPlotName = 0;
 $includeSetPrefName = 0;
 
-// We zetten de header uit, want voor de welkomstpagina is dat vaak niet nodig
 $showHeader = 0;
 
 // De body van de welkomstpagina
@@ -31,17 +29,17 @@ $bodyContent = "
         <div class='max-w-5xl mx-auto px-4'>
             <div class='grid md:grid-cols-3 gap-8'>
                 <div class='text-center'>
-                    <img src='/images/fast_icon.svg' alt='Holding the Drones' class='w-24 mx-auto mb-4'>
+                    <img src='/images/fast_icon.svg' alt='Snel' class='w-16 mx-auto mb-10'>
                     <h2 class='text-2xl font-bold mb-2'>Snel</h2>
                     <p class='text-gray-700'>Ervaar een snelle en efficiënte vluchtplanning.</p>
                 </div>
                 <div class='text-center'>
-                    <img src='/images/secure_icon.svg' alt='Holding the Drones' class='w-24 mx-auto mb-4'>
+                    <img src='/images/secure_icon.svg' alt='Veilig' class='w-16 mx-auto mb-10'>
                     <h2 class='text-2xl font-bold mb-2'>Veilig</h2>
                     <p class='text-gray-700'>Onze tools zorgen voor maximale veiligheid.</p>
                 </div>
                 <div class='text-center'>
-                    <img src='/images/organized_icon.svg' alt='Holding the Drones' class='w-24 mx-auto mb-4'>
+                    <img src='/images/organized_icon.svg' alt='Overzichtelijk' class='w-16 mx-auto mb-10'>
                     <h2 class='text-2xl font-bold mb-2'>Overzichtelijk</h2>
                     <p class='text-gray-700'>Altijd een helder overzicht van jouw operaties.</p>
                 </div>

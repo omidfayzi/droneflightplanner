@@ -102,7 +102,7 @@ include '../includes/header.php';
 ?>
 
 <script>
-// Je bestaande Alpine.js data en navigatie kunnen hier worden geïnitialiseerd
+// Bestaande Alpine.js data en navigatie kunnen hier worden geïnitialiseerd
 function app() {
   return {
     currentPage: 'dashboard',
