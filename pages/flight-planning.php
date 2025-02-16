@@ -1,9 +1,6 @@
 <?php
 include '../functions/functions.php';
 login();
-
-include '../functions/functions.php';
-login();
 $showHeader = 1;
 $headTitle = "Vluchtplanning";
 $bodyContent = "<div class='p-6'><h1 class='text-3xl font-bold'>Vluchtplanning</h1><p>Dit is de vluchtplanning pagina.</p></div>";

@@ -99,7 +99,8 @@ foreach ($files as $file) {
         <!-- Voeg Alpine.js toe -->
         <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 
-        <title>PerceelVoorkeuren3</title>
+        <link rel="icon" type="image/png" href="/images/favicon.png">
+        <title>vluchtmanagementsysteem</title>
     </head>
     <!-- Zorg dat de body de Alpine data initialiseert -->
     <body x-data="app()">
