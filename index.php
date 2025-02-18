@@ -10,6 +10,8 @@ $showHeader = 0;
 $bodyContent = "
     <!-- Hero Section -->
     <div class='min-h-screen flex flex-col justify-center items-center relative bg-cover bg-center' style='background-image: url(\"/images/background_background.jpg\");'>
+        <!-- Extra Overlay met overlay_background.png -->
+        <div class='absolute inset-0' style='background-image: url(\"/images/overlay_background.png\"); background-size: cover; background-position: center;'></div>
         <!-- Overlay voor een donker effect -->
         <div class='absolute inset-0 bg-black opacity-50'></div>
         
@@ -48,6 +50,5 @@ $bodyContent = "
     </div>
 ";
 
-// Include de header (die zorgt voor de volledige HTML opbouw, zoals het inladen van Tailwind CSS, Alpine.js, etc.)
 include './includes/header.php';
 ?>
