@@ -38,8 +38,8 @@ $insertIntoUsers = $_ENV['INSERT_INTO_USERS'];
 
 $updateIdinCheckAddress = $_ENV['UPDATE_IDIN_CHECK_ADRESS'];
 
-$deleteFromPlots = $_ENV['DELETE_FROM_PLOTS'];
-$deleteFromLinkedPreferencesWithPropId = $_ENV['DELETE_FROM_LINKED_PREFERENCES_WITH_PROP_ID'];
+$deleteFromPlots = $_ENV['DELETE_FROM_PLOTS'] ?? '';
+$deleteFromLinkedPreferencesWithPropId = $_ENV['DELETE_FROM_LINKED_PREFERENCES_WITH_PROP_ID'] ?? '';
 
 // Mapbox
 $mapboxGlCss = $_ENV['MAPBOX_GL_CSS'];
