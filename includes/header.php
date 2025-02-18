@@ -30,6 +30,7 @@ $getAllLinkedPreferences = $_ENV['GET_ALL_LINKED_PREFERENCES'];
 $getAllPreferences = $_ENV['GET_ALL_PREFERENCES'];
 $getUsersWithKeycloak = $_ENV['GET_USERS_WITH_KEYCLOAK'];
 
+
 $insertLinkedPreferences = $_ENV['INSERT_LINKED_PREFERENCES'];
 $insertPlot = $_ENV['INSERT_PLOT'];
 $insertIntoPrefList = $_ENV['INSERT_INTO_PREF_LIST'];
@@ -75,6 +76,7 @@ foreach ($files as $file) {
         include $directory . $file;
     }
 }
+
 ?>
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
@@ -96,14 +98,10 @@ foreach ($files as $file) {
         <script src="/scripts/idin.js"></script>
         <script src="/scripts/database.js"></script>
         <script src="/scripts/mapbox.js"></script>
-        <!-- Voeg Alpine.js toe -->
-        <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 
-        <link rel="icon" type="image/png" href="/images/favicon.png">
-        <title>vluchtmanagementsysteem</title>
+        <title>PerceelVoorkeuren3</title>
     </head>
-    <!-- Zorg dat de body de Alpine data initialiseert -->
-    <body x-data="app()">
+    <body>
     <?php if($showHeader == 1) { ?>
         <!-- Sidebar-->
         <div class="w-1/6 sm:h-screen h-12 sm:rounded-none rounded-sm sm:w-[16.6667%] w-screen bg-black bg-opacity-100 fixed bottom-0 z-40">
@@ -116,34 +114,36 @@ foreach ($files as $file) {
                     </div>
                     <div class="sm:mt-2 text-center">
                         <h1 class="text-white sm:text-base text-xs">
-                          <?php echo fetchPropPrefTxt(14); echo " ";
-                          if (isset($userName)) { echo $userName; } ?>
+                        <?php echo fetchPropPrefTxt(14); echo " ";
+                        if (isset($userName)) { echo $userName; } ?>
                         </h1>
                         <h1 class="text-white sm:text-base text-xs">
-                          <?php if (isset($org)) { echo $org; } ?>
+                        <?php
+                        if (isset($org)) { echo $org; } ?>
                         </h1>
                     </div>
                     <!-- Hamburger Button -->
-                    <button id="menuButton" class="ml-5 block md:hidden focus:outline-none z-60" onclick="toggleMenu()">
+                    <button
+                        id="menuButton"
+                        class="ml-5 block md:hidden focus:outline-none z-60"
+                        onclick="toggleMenu()"
+                    >
                         <div class="w-6 h-0.5 bg-white mb-1"></div>
                         <div class="w-6 h-0.5 bg-white mb-1"></div>
                         <div class="w-6 h-0.5 bg-white"></div>
                     </button>
 
-                    <!-- Dynamisch Navigatie Menu -->
-                    <nav id="menu" class="hidden md:block">
-                      <ul class="mt-4">
-                        <template x-for="item in navigation" :key="item.id">
-                          <li>
-                            <button @click="goTo(item.href)"
-                                    class="w-full text-left p-4 flex items-center space-x-3 transition-colors hover:bg-gray-700 rounded-xl"
-                                    :class="currentPage === item.id ? 'bg-gray-800 text-white' : 'text-gray-300'">
-                              <i :class="item.icon + ' w-5'"></i>
-                              <span class="text-sm font-medium" x-text="item.label"></span>
-                            </button>
-                          </li>
-                        </template>
-                      </ul>
+                    <!-- Navigation Menu -->
+                    <nav id="menu" class="md:flex sm:relative fixed inset-0 bottom-12 hidden">
+                        <div id="menu2" class="sm:relative absolute bottom-0 w-full bg-black">
+                            <div id="menu3" class="flex flex-col items-center justify-center sm:p-0 sm:pt-4 p-4">
+                                <!-- <a href="../index.php" class="m-2 p-2 border-2 border-zinc-700 rounded-xl w-full text-white hover:text-gray-400">Home</a> -->
+                                <a href="../dashboard" class="m-2 p-2 border-2 border-zinc-700 rounded-xl w-full text-white hover:text-gray-400">Dashboard</a>
+                                <a href="../set-plot-overview" class="m-2 p-2 text-white border-2 border-zinc-700 rounded-xl w-full hover:text-gray-400">Perceel instellen</a>
+                                <a href="../set-pref-overview" class="m-2 p-2 text-white border-2 border-zinc-700 rounded-xl w-full hover:text-gray-400">Voorkeuren instellen</a>
+                                <a href="../link-pref-overview" class="m-2 p-2 text-white border-2 border-zinc-700 rounded-xl w-full hover:text-gray-400">Voorkeuren koppelen</a>
+                            </div>
+                        </div>
                     </nav>
                 </div>
             </div>
@@ -175,12 +175,10 @@ foreach ($files as $file) {
                         </h1>
                     </div>
                 <div class="flex justify-center items-center">
-                    <div>
+                    <div> 
                         <?php 
                             if (isset($saveAttributes)) { ?>
-                                <button id="<?php echo $saveAttributes;?>" class="hover:scale-105 transition-all bg-red-800 p-1 pl-4 pr-4 sm:mr-8 mr-4 rounded-xl" onclick="<?php echo $saveAttributes;?>">
-                                  <?php echo fetchPropPrefTxt(9) ?>
-                                </button><?php
+                                <button id="<?php echo $saveAttributes;?>" class="hover:scale-105 transition-all bg-red-800 p-1 pl-4 pr-4 sm:mr-8 mr-4 rounded-xl" onclick="<?php echo $saveAttributes;?>"><?php echo fetchPropPrefTxt(9) ?></button><?php
                             } 
                         ?>
                     </div>
@@ -216,81 +214,83 @@ foreach ($files as $file) {
     </body>
 </html>
 <script>
+
   function toggleMenu() {
-    const menu = document.getElementById('menu');
+  const menu = document.getElementById('menu');
+
     if (menu.classList.contains('hidden')) {
-      menu.classList.remove('hidden');
+        menu.classList.remove('hidden');
     } else {
-      menu.classList.add('hidden');
+        menu.classList.add('hidden');
     }
   }
-  
-  // Overige JS-variabelen blijven ongewijzigd
-  const overpassApiUrl = "<?php echo $_ENV['OVERPASS_API_URL']; ?>";
-  const mainUrl = "<?php echo $_ENV['MAIN_URL']; ?>";
+    const overpassApiUrl = "<?php echo $_ENV['OVERPASS_API_URL']; ?>";
+    const mainUrl = "<?php echo $_ENV['MAIN_URL']; ?>";
 
-  const bluemToken = "<?php echo $_ENV['BLUEM_TOKEN']; ?>";
-  const bluemSenderId = "<?php echo $_ENV['BLUEM_SENDER_ID']; ?>";
-  const bluemIdinBrandId = "<?php echo $_ENV['BLUEM_IDIN_BRAND_ID']; ?>";
-  const bluemIdealBrandId = "<?php echo $_ENV['BLUEM_IDEAL_BRAND_ID']; ?>";
+    const bluemToken = "<?php echo $_ENV['BLUEM_TOKEN']; ?>";
+    const bluemSenderId = "<?php echo $_ENV['BLUEM_SENDER_ID']; ?>";
+    const bluemIdinBrandId = "<?php echo $_ENV['BLUEM_IDIN_BRAND_ID']; ?>";
+    const bluemIdealBrandId = "<?php echo $_ENV['BLUEM_IDEAL_BRAND_ID']; ?>";
 
-  const bluemCreateTransaction = "<?php echo $_ENV['BLUEM_CREATE_TRANSACTION_URL']; ?>";
-  const bluemRequestTransaction = "<?php echo $_ENV['BLUEM_REQUEST_TRANSACTION_URL']; ?>";
+    const bluemCreateTransaction = "<?php echo $_ENV['BLUEM_CREATE_TRANSACTION_URL']; ?>";
+    const bluemRequestTransaction = "<?php echo $_ENV['BLUEM_REQUEST_TRANSACTION_URL']; ?>";
 
-  const mapBoxAccessToken = "<?php echo $_ENV['MAPBOX_ACCESS_TOKEN']; ?>";
-  const kadasterBagAccessToken = "<?php echo $_ENV['KADASTER_BAG_ACCESS_TOKEN']; ?>";
-  const kadasterKadataAccessToken = "<?php echo $_ENV['KADASTER_KADATA_ACCESS_TOKEN']; ?>";
-  const keyCloakClientSecret = "<?php echo $_ENV['KEYCLOAK_CLIENT_SECRET']; ?>";
+    const mapBoxAccessToken = "<?php echo $_ENV['MAPBOX_ACCESS_TOKEN']; ?>";
+    const kadasterBagAccessToken = "<?php echo $_ENV['KADASTER_BAG_ACCESS_TOKEN']; ?>";
+    const kadasterKadataAccessToken = "<?php echo $_ENV['KADASTER_KADATA_ACCESS_TOKEN']; ?>";
+    const keyCloakClientSecret = "<?php echo $_ENV['KEYCLOAK_CLIENT_SECRET']; ?>";
 
-  // Links to database
-  const getTextWithId = "<?php echo $_ENV['GET_TEXT_WITH_ID']; ?>";
-  const getAllPrefList = "<?php echo $_ENV['GET_ALL_PREF_LIST']; ?>";
-  const getHighestIdPrefList = "<?php echo $_ENV['GET_HIGHEST_ID_PREF_LIST']; ?>";
-  const getAllPlots = "<?php echo $_ENV['GET_ALL_PLOTS']; ?>";
-  const getAllLinkedPreferences = "<?php echo $_ENV['GET_ALL_LINKED_PREFERENCES']; ?>";
-  const getAllPreferences = "<?php echo $_ENV['GET_ALL_PREFERENCES']; ?>";
-  const getUsersWithKeycloak = "<?php echo $_ENV['GET_USERS_WITH_KEYCLOAK']; ?>";
+    // Links to database
+    const getTextWithId = "<?php echo $_ENV['GET_TEXT_WITH_ID']; ?>";
+    const getAllPrefList = "<?php echo $_ENV['GET_ALL_PREF_LIST']; ?>";
+    const getHighestIdPrefList = "<?php echo $_ENV['GET_HIGHEST_ID_PREF_LIST']; ?>";
+    const getAllPlots = "<?php echo $_ENV['GET_ALL_PLOTS']; ?>";
+    const getAllLinkedPreferences = "<?php echo $_ENV['GET_ALL_LINKED_PREFERENCES']; ?>";
+    const getAllPreferences = "<?php echo $_ENV['GET_ALL_PREFERENCES']; ?>";
+    const getUsersWithKeycloak = "<?php echo $_ENV['GET_USERS_WITH_KEYCLOAK']; ?>";
 
-  const insertLinkedPreferences = "<?php echo $_ENV['INSERT_LINKED_PREFERENCES']; ?>";
-  const insertPlot = "<?php echo $_ENV['INSERT_PLOT']; ?>";
-  const insertIntoPrefList = "<?php echo $_ENV['INSERT_INTO_PREF_LIST']; ?>";
-  const insertIntoUsers2 = "<?php echo $_ENV['INSERT_INTO_USERS']; ?>";
+    const insertLinkedPreferences = "<?php echo $_ENV['INSERT_LINKED_PREFERENCES']; ?>";
+    const insertPlot = "<?php echo $_ENV['INSERT_PLOT']; ?>";
+    const insertIntoPrefList = "<?php echo $_ENV['INSERT_INTO_PREF_LIST']; ?>";
+    const insertIntoUsers2 = "<?php echo $_ENV['INSERT_INTO_USERS']; ?>";
 
-  const updateIdinCheckAddress2 = "<?php echo $_ENV['UPDATE_IDIN_CHECK_ADRESS']; ?>";
+    const updateIdinCheckAddress2 = "<?php echo $_ENV['UPDATE_IDIN_CHECK_ADRESS']; ?>";
 
-  // Mapbox
-  const mapboxGlCss = "<?php echo $_ENV['MAPBOX_GL_CSS']; ?>";
-  const mapboxGlJs = "<?php echo $_ENV['MAPBOX_GL_JS']; ?>";
+    // Mapbox
+    const mapboxGlCss = "<?php echo $_ENV['MAPBOX_GL_CSS']; ?>";
+    const mapboxGlJs = "<?php echo $_ENV['MAPBOX_GL_JS']; ?>";
 
-  const mapboxGlGeocoderJs = "<?php echo $_ENV['MAPBOX_GL_GEOCODER_JS']; ?>";
-  const mapboxGlGeocoderCss = "<?php echo $_ENV['MAPBOX_GL_GEOCODER_CSS']; ?>";
+    const mapboxGlGeocoderJs = "<?php echo $_ENV['MAPBOX_GL_GEOCODER_JS']; ?>";
+    const mapboxGlGeocoderCss = "<?php echo $_ENV['MAPBOX_GL_GEOCODER_CSS']; ?>";
 
-  const mapBoxReverseGeocoding = "<?php echo $_ENV['MAPBOX_REVERSE_GEOCODING']; ?>";
-  const mapboxStaticImageApi = "<?php echo $_ENV['MAPBOX_STATIC_IMAGE_API']; ?>";
+    const mapBoxReverseGeocoding = "<?php echo $_ENV['MAPBOX_REVERSE_GEOCODING']; ?>";
+    const mapboxStaticImageApi = "<?php echo $_ENV['MAPBOX_STATIC_IMAGE_API']; ?>";
 
-  // jQuery
-  const jquery = "<?php echo $_ENV['JQUERY']; ?>";
-  const jqueryScript = "<?php echo $_ENV['JQUERY_SCRIPT']; ?>";
+    // jQuery
+    const jquery = "<?php echo $_ENV['JQUERY']; ?>";
+    const jqueryScript = "<?php echo $_ENV['JQUERY_SCRIPT']; ?>";
 
-  // Tailwind
-  const tailwindDev = "<?php echo $_ENV['TAILWIND_DEV']; ?>";
+    // Tailwind
+    const tailwindDev = "<?php echo $_ENV['TAILWIND_DEV']; ?>";
 
-  // CORS
-  const corsAnywhere = "<?php echo $_ENV['CORS_ANYWHERE']; ?>";
-  const userOrgDatabaseUser = "<?php echo $_ENV['USER_ORG_DATABASE_USER']; ?>";
-  const userOrgDatabaseOrg = "<?php echo $_ENV['USER_ORG_DATABASE_ORG']; ?>";
-  const userOrgDatabaseBearerToken = "<?php echo $_ENV['USER_ORG_DATABASE_BEARER_TOKEN']; ?>";
+    // CORS
+    const corsAnywhere = "<?php echo $_ENV['CORS_ANYWHERE']; ?>";
+    const userOrgDatabaseUser = "<?php echo $_ENV['USER_ORG_DATABASE_USER']; ?>";
+    const userOrgDatabaseOrg = "<?php echo $_ENV['USER_ORG_DATABASE_ORG']; ?>";
+    const userOrgDatabaseBearerToken = "<?php echo $_ENV['USER_ORG_DATABASE_BEARER_TOKEN']; ?>";
 
-  // Kadaster (test)
-  const kadasterUrl = "<?php echo $_ENV['KADASTER_URL']; ?>";
-  const kadasterApiKey = "<?php echo $_ENV['KADASTER_API_KEY']; ?>";
+    // Kadaster (test)
+    const kadasterUrl = "<?php echo $_ENV['KADASTER_URL']; ?>";
+    const kadasterApiKey = "<?php echo $_ENV['KADASTER_API_KEY']; ?>";
 
-  // Keycloak
-  const keycloakAuthServerUrl = "<?php echo $_ENV['KEYCLOAK_AUTH_SERVER_URL']; ?>";
-  const keycloakRealm = "<?php echo $_ENV['KEYCLOAK_REALM']; ?>";
-  const keycloakClientId = "<?php echo $_ENV['KEYCLOAK_CLIENT_ID']; ?>";
-  const keycloakRedirectUri = "<?php echo $_ENV['KEYCLOAK_REDIRECT_URI']; ?>";
+    // Keycloak
+    const keycloakAuthServerUrl = "<?php echo $_ENV['KEYCLOAK_AUTH_SERVER_URL']; ?>";
+    const keycloakRealm = "<?php echo $_ENV['KEYCLOAK_REALM']; ?>";
+    const keycloakClientId = "<?php echo $_ENV['KEYCLOAK_CLIENT_ID']; ?>";
+    const keycloakRedirectUri = "<?php echo $_ENV['KEYCLOAK_REDIRECT_URI']; ?>";
 
-  const deleteFromPlots = "<?php echo $_ENV['DELETE_FROM_PLOTS']; ?>";
-  const deleteFromLinkedPreferencesWithPropId = "<?php echo $_ENV['DELETE_FROM_LINKED_PREFERENCES_WITH_PROP_ID']; ?>";
+    const deleteFromPlots = "<?php echo $_ENV['DELETE_FROM_PLOTS']; ?>";
+    const deleteFromLinkedPreferencesWithPropId = "<?php echo $_ENV['DELETE_FROM_LINKED_PREFERENCES_WITH_PROP_ID']; ?>";
+
 </script>
+
