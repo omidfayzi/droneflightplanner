@@ -1,6 +1,18 @@
 <?php
-session_start(); // This must be at the very top with no output before it
+/**
+ * In deze file komen je herbruikbare functies.
+ * Plaats deze in: /backend/functions/functions.php
+ */
 
+// Alleen session_start() als er nog geen sessie actief is
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+/**
+ * login()
+ * Functie om te controleren of bepaalde session-variabelen gezet zijn.
+ */
 function login() {
     // Check for session state and handle accordingly
     if (isset($_GET["state"]) && !isset($_SESSION["state"])) {
@@ -21,35 +33,29 @@ function login() {
     }
 }
 
+/**
+ * fetchPropPrefTxt()
+ * Haalt tekst op via een externe API en kijkt naar de gekozen taal.
+ */
 function fetchPropPrefTxt($id) {
     $url = "https://api.droneperceelvoorkeuren.nl/get-txt-with-id/$id"; 
 
-    // Fetch the API response using file_get_contents
+    // Ophalen van data via file_get_contents
     $response = file_get_contents($url);
 
-    // Check if the request was successful
-    if ($response === FALSE) {
+    if ($response === false) {
         die('Error occurred while fetching data.');
     }
 
-    // Decode the JSON response
     $data = json_decode($response, true);
-
-    // Validate and process the response
     if (!isset($data['users']) || empty($data['users'])) {
         die('No data found.');
     }
 
-    // Extract the single row
-    $user = $data['users'][0]; // Since it’s always one row
+    $user = $data['users'][0]; // Altijd één rij volgens jouw API
 
-    // Check if the language cookie is set
-    if (isset($_COOKIE['language_id'])) {
-        $language_id = $_COOKIE['language_id'];
-    } else {
-        $language_id = "PropPrefTxt_En";
-    }
+    // Bepaal de taal via cookie of standaard op Engels
+    $language_id = $_COOKIE['language_id'] ?? "PropPrefTxt_En";
 
-    return $user[$language_id]; // Return the specific field
+    return $user[$language_id];
 }
-?>

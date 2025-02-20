@@ -1,13 +1,19 @@
 <?php
-include '../functions/functions.php';
+session_start();
+
+// Verwijs naar functions.php vanuit de map: 
+// (frontend/pages) → (frontend) → (backend/functions/functions.php)
+include __DIR__ . '/../../backend/functions/functions.php';
+
+// Start je login-procedure
 login();
 
 // Stel parameters in voor de dashboardpagina
 $includeSetPlotName = 0;
 $includeSetPrefName = 0;
 $includeCheckWithIdin = 1;
-$user = $_SESSION["user"];
-$userName = $user['first_name'];
+$user = $_SESSION["user"] ?? null;
+$userName = $user['first_name'] ?? 'Onbekend';
 $gobackUrl = 0;
 $rightAttributes = 0;
 $headTitle = "Dashboard";
@@ -97,8 +103,10 @@ $bodyContent = "
 </div>
 ";
 
-// Include de header die de volledige HTML-opbouw verzorgt
-include '../includes/header.php';
+// Include de header die de volledige HTML-opbouw verzorgt.
+// Let op: van 'dashboard.php' naar 'includes' is één map omhoog (..),
+// en 'includes' staat naast 'pages', dus: ../includes/header.php
+include __DIR__ . '/../includes/header.php';
 ?>
 
 <script>
