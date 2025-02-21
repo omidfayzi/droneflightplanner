@@ -1,6 +1,5 @@
 <?php
 session_start();
-include __DIR__ . '/../includes/header.php';
 
 // Sla de gegevens van stap 1 op in de sessie
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -9,24 +8,87 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $_SESSION['flight_planning']['destination'] = $_POST['destination'] ?? '';
     $_SESSION['flight_planning']['flight_datetime'] = $_POST['flight_datetime'] ?? '';
 }
+
+// Stel variabelen in voor de header
+$showHeader = 1;
+$userName = $_SESSION['user']['first_name'] ?? 'Onbekend'; // Haal uit sessie
+$org = 'Organisatie B'; // Voorbeeld, pas aan via sessie of database
+$headTitle = "Vluchtplanning";
+$gobackUrl = 0;
+$rightAttributes = 0; // Geen logout-knop hier, maar wel notificatie en profiel
+
+
+$bodyContent = "
+    <div class='h-[90vh] max-h-[90vh] mx-auto bg-white shadow-md rounded-tl-xl overflow-y-hidden w-13/15'>
+        <!-- Hoofding -->
+        <div class='p-4 bg-white border-b border-gray-200 flex justify-between items-center'>
+            <div>
+                <h1 class='text-2xl font-bold text-gray-900'>Vluchtplanning</h1>
+                <p class='text-sm text-gray-500'>Laatste update: 15 minuten geleden, " . htmlspecialchars($org) . "</p>
+            </div>
+            <div class='flex items-center space-x-4'>
+                <div class='relative'>
+                    <i class='fa-solid fa-bell text-gray-600 hover:text-gray-800 cursor-pointer'></i>
+                    <span class='absolute -top-1 -right-1 bg-red-600 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center'>3</span>
+                </div>
+                <a href='/src/frontend/pages/profile.php' class='text-gray-600 hover:text-gray-800'>
+                    <i class='fa-solid fa-user text-xl'></i>
+                </a>
+            </div>
+        </div>
+
+        <!-- Stappenbalk -->
+        <div class='p-4 bg-gray-100'>
+            <div class='flex justify-center items-center space-x-4'>
+                <span class='w-8 h-8 bg-gray-300 text-gray-600 rounded-full flex items-center justify-center'>1</span>
+                <div class='flex-1 h-1 bg-blue-600'></div> <!-- Lijn tussen 1 en 2 blauw -->
+                <span class='w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold'>2</span>
+                <div class='flex-1 h-1 bg-gray-300'></div>
+                <span class='w-8 h-8 bg-gray-300 text-gray-600 rounded-full flex items-center justify-center'>3</span>
+                <div class='flex-1 h-1 bg-gray-300'></div>
+                <span class='w-8 h-8 bg-gray-300 text-gray-600 rounded-full flex items-center justify-center'>4</span>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div class='p-6 overflow-y-auto max-h-[calc(90vh-200px)]'>
+            <h2 class='text-xl font-bold mb-4 text-gray-800'>Risicoanalyse</h2>
+            <form action='/frontend/pages/flight-planning-step3.php' method='post' class='space-y-6'>
+                <div class='bg-gray-200 p-5 rounded-lg mb-4 w-full'>
+                    <div class='flex items-center justify-between'>
+                        <div class='text-left'>
+                            <p class='text-sm font-medium text-gray-700'>SAIL Score: 1.7 Maximaal toegestaan: 2.0</p>
+                        </div>
+                        <button type='button' class='bg-gray-900 text-white px-3 py-1 rounded-full text-xs hover:bg-gray-700 transition-colors ml-4'>
+                            Acceptabel
+                        </button>
+                    </div>
+                </div>
+                <div class='bg-gray-200 p-4 rounded-full mb-4 flex items-center'>
+                    <input type='checkbox' name='risk_checklist[]' value='increase_altitude' id='increase_altitude' class='mr-2 h-4 w-4'>
+                    <label for='increase_altitude' class='text-sm text-gray-700 ml-1'>1. Verhoog minimale vlieghoogte naar 150m</label>
+                </div>
+                <div class='grid grid-cols-1 md:grid-cols-2 gap-4 mb-4'>
+                    <div class='bg-gray-200 p-5 rounded-lg flex items-center justify-center w-4/10 mx-[2.5%] h-80'>
+                        <i class='fa-solid fa-chart-pie text-gray-600 text-3xl'></i>
+                    </div>
+                    <div class='bg-gray-200 p-5 rounded-lg flex items-center justify-center w-4/10 mx-[2.5%] h-80'>
+                        <i class='fa-solid fa-list-ul text-gray-600 text-3xl'></i>
+                    </div>
+                </div>
+                <div class='flex justify-between items-center'>
+                    <a href='/frontend/pages/flight-planning-step1.php' class='text-gray-500 hover:text-gray-700 flex items-center text-sm px-3 py-2'>
+                        <i class='fa-solid fa-arrow-left mr-2'></i> Vorige stap
+                    </a>
+                    <button type='submit' class='bg-gray-900 text-white px-6 py-3 rounded-full hover:bg-gray-700 transition-colors flex items-center'>
+                        Volgende <i class='fa-solid fa-arrow-right ml-2'></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+";
+
+// Inclusie van de header (volledige lay-out)
+include __DIR__ . '/../includes/header.php';
 ?>
-<div class="container mx-auto p-6">
-  <h2 class="text-2xl font-bold mb-4">Stap 2: Risicoanalyse</h2>
-  <form action="flight-planning-step3.php" method="post" class="space-y-4">
-    <div>
-      <label class="block text-sm font-medium mb-1">Risico Score</label>
-      <input type="number" name="risk_score" class="w-full p-3 border rounded-lg" placeholder="Voer de risico score in" min="0" max="10" required>
-    </div>
-    <div>
-      <label class="block text-sm font-medium mb-1">Risico Opmerkingen</label>
-      <textarea name="risk_comments" class="w-full p-3 border rounded-lg" placeholder="Voer eventuele opmerkingen in"></textarea>
-    </div>
-    <div class="flex justify-between">
-      <a href="flight-planning-step1.php" class="text-black hover:underline">← Vorige stap</a>
-      <button type="submit" class="bg-black text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors">
-        Volgende stap <i class="fa-solid fa-arrow-right ml-2"></i>
-      </button>
-    </div>
-  </form>
-</div>
-<?php include __DIR__ . '/../includes/footer.php'; ?>
