@@ -12,11 +12,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Stel variabelen in voor de header
 $showHeader = 1;
 $userName = $_SESSION['user']['first_name'] ?? 'Onbekend'; // Haal uit sessie
-$org = 'Organisatie B'; // Voorbeeld, pas aan via sessie of database
+$org = 'Organisatie A'; // Aangepast naar "Organisatie A" zoals in de afbeelding
 $headTitle = "Vluchtplanning";
 $gobackUrl = 0;
-$rightAttributes = 0; // Geen logout-knop hier, maar wel notificatie en profiel
-
+$rightAttributes = 0; // Geen logout-knop, wel notificatie en profiel
 
 $bodyContent = "
     <div class='h-[90vh] max-h-[90vh] mx-auto bg-white shadow-md rounded-tl-xl overflow-y-hidden w-13/15'>
@@ -40,8 +39,8 @@ $bodyContent = "
         <!-- Stappenbalk -->
         <div class='p-4 bg-gray-100'>
             <div class='flex justify-center items-center space-x-4'>
-                <span class='w-8 h-8 bg-gray-300 text-gray-600 rounded-full flex items-center justify-center'>1</span>
-                <div class='flex-1 h-1 bg-blue-600'></div> <!-- Lijn tussen 1 en 2 blauw -->
+                <span class='w-8 h-8 bg-black text-white rounded-full flex items-center justify-center'>1</span>
+                <div class='flex-1 h-1 bg-black'></div>
                 <span class='w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold'>2</span>
                 <div class='flex-1 h-1 bg-gray-300'></div>
                 <span class='w-8 h-8 bg-gray-300 text-gray-600 rounded-full flex items-center justify-center'>3</span>
@@ -50,7 +49,7 @@ $bodyContent = "
             </div>
         </div>
 
-        <!-- Content -->
+        <!-- Inhoud -->
         <div class='p-6 overflow-y-auto max-h-[calc(90vh-200px)]'>
             <h2 class='text-xl font-bold mb-4 text-gray-800'>Risicoanalyse</h2>
             <form action='/frontend/pages/flight-planning-step3.php' method='post' class='space-y-6'>

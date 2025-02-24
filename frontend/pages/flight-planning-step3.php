@@ -1,43 +1,94 @@
 <?php
 session_start();
-include __DIR__ . '/../includes/header.php';
 
-// Sla de gegevens van stap 2 op in de sessie
+// Sla de gegevens van stap 2 op in de sessie (indien nodig)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $_SESSION['flight_planning']['risk_score'] = $_POST['risk_score'] ?? '';
-    $_SESSION['flight_planning']['risk_comments'] = $_POST['risk_comments'] ?? '';
+    // Voeg hier logica toe om gegevens van Stap 2 op te slaan, indien nodig
 }
+
+// Stel variabelen in voor de header
+$showHeader = 1;
+$userName = $_SESSION['user']['first_name'] ?? 'Onbekend'; // Haal uit sessie
+$org = 'Organisatie A'; // Bijgewerkt naar Organisatie A zoals in de afbeelding
+$headTitle = "Vluchtplanning";
+$gobackUrl = 0;
+$rightAttributes = 0; // Geen logout-knop, wel notificatie en profiel
+
+$bodyContent = "
+    <div class='h-[90vh] max-h-[90vh] mx-auto bg-white shadow-md rounded-tl-xl overflow-y-hidden w-13/15'>
+        <!-- Hoofding -->
+        <div class='p-4 bg-white border-b border-gray-200 flex justify-between items-center'>
+            <div>
+                <h1 class='text-2xl font-bold text-gray-900'>Vluchtplanning</h1>
+                <p class='text-sm text-gray-500'>Laatste update: 15 minuten geleden, " . htmlspecialchars($org) . "</p>
+            </div>
+            <div class='flex items-center space-x-4'>
+                <div class='relative'>
+                    <i class='fa-solid fa-bell text-gray-600 hover:text-gray-800 cursor-pointer'></i>
+                    <span class='absolute -top-1 -right-1 bg-red-600 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center'>3</span>
+                </div>
+                <a href='/src/frontend/pages/profile.php' class='text-gray-600 hover:text-gray-800'>
+                    <i class='fa-solid fa-user text-xl'></i>
+                </a>
+            </div>
+        </div>
+
+        <!-- Stappenbalk -->
+        <div class='p-4 bg-gray-100'>
+            <div class='flex justify-center items-center space-x-4'>
+                <span class='w-8 h-8 bg-black text-white rounded-full flex items-center justify-center'>1</span>
+                <div class='flex-1 h-1 bg-black'></div>
+                <span class='w-8 h-8 bg-black text-white rounded-full flex items-center justify-center'>2</span>
+                <div class='flex-1 h-1 bg-black'></div>
+                <span class='w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold'>3</span>
+                <div class='flex-1 h-1 bg-gray-300'></div>
+                <span class='w-8 h-8 bg-gray-300 text-black rounded-full flex items-center justify-center'>4</span>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div class='p-6 overflow-y-auto max-h-[calc(90vh-200px)]'>
+            <h2 class='text-xl font-bold mb-4 text-gray-800'>Goedkeuring aanvragen</h2>
+            <form action='/frontend/pages/flight-planning-step4.php' method='post' class='space-y-6'>
+                <div class='bg-white rounded-lg shadow-md p-4'>
+                    <h3 class='text-lg font-semibold mb-3 text-gray-700'>Vereiste vergunningen</h3>
+                    <div class='space-y-3'>
+                        <div class='flex items-center'>
+                            <input type='checkbox' id='airspace_permission' name='permissions[]' value='airspace' class='h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500'>
+                            <label for='airspace_permission' class='ml-2 text-sm text-gray-700'>Luchtruimtoestemming</label>
+                        </div>
+                        <div class='flex items-center'>
+                            <input type='checkbox' id='privacy_statement' name='permissions[]' value='privacy' class='h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500'>
+                            <label for='privacy_statement' class='ml-2 text-sm text-gray-700'>Privacyverklaring</label>
+                        </div>
+                        <div class='flex items-center'>
+                            <input type='checkbox' id='risk_acceptance' name='permissions[]' value='risk' class='h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500'>
+                            <label for='risk_acceptance' class='ml-2 text-sm text-gray-700'>Risicoacceptatie</label>
+                        </div>
+                    </div>
+                </div>
+                <div class='bg-white rounded-lg shadow-md p-4'>
+                    <h3 class='text-lg font-semibold mb-3 text-gray-700'>Documentupload</h3>
+                    <div class='border-2 border-dashed border-gray-300 p-6 text-center rounded-lg'>
+                        <p class='text-sm text-gray-500'>Sleep bestanden hierheen</p>
+                        <p class='text-sm text-gray-500'>of</p>
+                        <label for='file_upload' class='cursor-pointer text-blue-600 hover:text-blue-800'>Selecteer bestanden</label>
+                        <input type='file' id='file_upload' name='documents[]' multiple class='hidden'>
+                    </div>
+                </div>
+                <div class='flex justify-between items-center mt-6'>
+                    <a href='/frontend/pages/flight-planning-step2.php' class='text-gray-500 hover:text-gray-700 flex items-center text-sm px-3 py-2'>
+                        <i class='fa-solid fa-arrow-left mr-2'></i> Vorige stap
+                    </a>
+                    <button type='submit' class='bg-black text-white px-6 py-3 rounded-full hover:bg-gray-800 transition-colors flex items-center'>
+                        Aanvraag indienen <i class='fa-solid fa-arrow-right ml-2'></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+";
+
+// Inclusie van de header (volledige lay-out)
+include __DIR__ . '/../includes/header.php';
 ?>
-<div class="container mx-auto p-6">
-  <h2 class="text-2xl font-bold mb-4">Stap 3: Goedkeuring aanvragen</h2>
-  <form action="flight-planning-step4.php" method="post" enctype="multipart/form-data" class="space-y-4">
-    <div>
-      <label class="block text-sm font-medium mb-1">Vereiste Vergunningen</label>
-      <div class="space-y-2">
-        <div class="flex items-center">
-          <input type="checkbox" name="permits[]" value="luchtruim" class="mr-2">
-          <span>Luchtruimtoestemming</span>
-        </div>
-        <div class="flex items-center">
-          <input type="checkbox" name="permits[]" value="privacy" class="mr-2">
-          <span>Privacyverklaring</span>
-        </div>
-        <div class="flex items-center">
-          <input type="checkbox" name="permits[]" value="risico" class="mr-2">
-          <span>Risicoacceptatie</span>
-        </div>
-      </div>
-    </div>
-    <div>
-      <label class="block text-sm font-medium mb-1">Documentupload</label>
-      <input type="file" name="documents[]" multiple class="w-full p-3 border rounded-lg">
-    </div>
-    <div class="flex justify-between">
-      <a href="flight-planning-step2.php" class="text-black hover:underline">← Vorige stap</a>
-      <button type="submit" class="bg-black text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors">
-        Aanvraag indienen <i class="fa-solid fa-arrow-right ml-2"></i>
-      </button>
-    </div>
-  </form>
-</div>
-<?php include __DIR__ . '/../includes/footer.php'; ?>
