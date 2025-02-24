@@ -122,6 +122,9 @@ if (!isset($bodyContent)) {
   <script src="<?php echo $tailwindDev; ?>"></script>
   <script src="<?php echo $jqueryScript; ?>"></script>
   
+  <!-- Laad FontAwesome CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  
   <!-- Eigen styles en scripts -->
   <link rel="stylesheet" href="/src/frontend/assets/styles/custom12.css">
   <script src="/src/frontend/assets/scripts/global120.js"></script>
@@ -130,70 +133,81 @@ if (!isset($bodyContent)) {
   <script src="/src/frontend/assets/scripts/mapbox.js"></script>
 
   <title><?php echo htmlspecialchars($headTitle); ?></title>
+  <!-- Toegevoegde stijl om de achtergrondkleur van het navigatiemenu aan te passen -->
+  <style>
+    .bg-custom-gray {
+      background-color: #313234;
+    }
+    /* Stijl voor actieve menu-item */
+    .active-menu {
+      background-color: #2563EB;
+      color: white;
+    }
+  </style>
 </head>
 <body class="bg-gray-50 font-sans">
 <?php if ($showHeader == 1): ?>
-<!-- Sidebar (Navigatie) -->
-<div class="w-64 sm:h-screen h-16 bg-gray-900 fixed bottom-0 sm:top-0 z-40 border-r border-gray-200 shadow-xl">
+
+    <div class="w-64 sm:h-screen h-16 fixed bottom-0 sm:top-0 z-40 border-r border-gray-200 shadow-xl bg-custom-gray">
     <div class="flex flex-col h-full">
         <!-- Logo Section -->
         <div class="w-full p-6 border-b border-gray-700">
             <a href="/frontend/pages/dashboard.php" class="block hover:opacity-90 transition-opacity">
                 <img src="/frontend/assets/images/holding_the_drone_logo.png" 
                      alt="Drone Control" 
-                     class="h-12 w-auto object-contain mx-auto">
+                     class="h-28 w-auto object-contain mx-auto p-2.5">
             </a>
         </div>
 
         <!-- Navigatiemenu -->
         <nav class="flex-1 flex flex-col px-4 py-6 space-y-2">
-            <?php
-            $menuItems = [
-                [
-                    'url' => '/frontend/pages/dashboard.php',
-                    'icon' => 'fa-chart-line',
-                    'text' => 'Dashboard'
-                ],
-                [
-                    'url' => '/frontend/pages/flight-planning-step1.php',
-                    'icon' => 'fa-map-marked-alt',
-                    'text' => 'Vluchtplanning'
-                ],
-                [
-                    'url' => '#',
-                    'icon' => 'fa-chart-bar',
-                    'text' => 'Monitoring'
-                ],
-                [
-                    'url' => '#',
-                    'icon' => 'fa-folder-open',
-                    'text' => 'Documenten'
-                ],
-                [
-                    'url' => '#',
-                    'icon' => 'fa-users-cog',
-                    'text' => 'Teambeheer'
-                ]
-            ];
+    <?php
+$menuItems = [
+    [
+        'url' => '/frontend/pages/dashboard.php',
+        'icon' => 'fa-chart-line', // Geldige FontAwesome-klasse
+        'text' => 'Dashboard'
+    ],
+    [
+        'url' => '/frontend/pages/flight-planning-step1.php',
+        'icon' => 'fa-map-marked-alt', // Geldige FontAwesome-klasse
+        'text' => 'Vluchtplanning'
+    ],
+    [
+        'url' => '#',
+        'icon' => 'fa-chart-bar', // Geldige FontAwesome-klasse
+        'text' => 'Monitoring'
+    ],
+    [
+        'url' => '#',
+        'icon' => 'fa-folder-open', // Geldige FontAwesome-klasse
+        'text' => 'Resources'
+    ],
+    [
+        'url' => '#',
+        'icon' => 'fa-users-cog', // Geldige FontAwesome-klasse
+        'text' => 'Teambeheer'
+    ]
+];
 
-            foreach ($menuItems as $item) {
-                $isActive = $_SERVER['REQUEST_URI'] === $item['url'] ? 'bg-blue-600/20 text-blue-500' : 'text-gray-300 hover:bg-gray-800/40';
-                echo <<<HTML
-                <a href="{$item['url']}" 
-                   class="w-full flex items-center space-x-4 p-3 rounded-lg transition-colors duration-200 {$isActive}">
-                    <i class="fa-solid {$item['icon']} text-lg w-6 text-center"></i>
-                    <span class="text-sm font-medium">{$item['text']}</span>
-                </a>
-                HTML;
-            }
-            ?>
-        </nav>
+    foreach ($menuItems as $item) {
+        $isActive = $_SERVER['REQUEST_URI'] === $item['url'] ? 'active-menu' : 'text-gray-300 hover:bg-gray-700/50';
+        echo <<<HTML
+        <a href="{$item['url']}" 
+           class="w-full flex items-center space-x-4 p-4 rounded-lg transition-colors duration-300 {$isActive}">
+            <i class="fa-solid {$item['icon']} ml-8 text-xl w-6 text-center "></i>
+            <span class="text-base font-medium">{$item['text']}</span>
+        </a>
+        HTML;
+    }
+    ?>
+</nav>
 
         <!-- Profile Section -->
-        <div class="mt-auto w-full p-4 border-t border-gray-700">
+        <div class="mt-auto w-full p-4 border-t border-gray-700 flex justify-center items-center my-4">
             <div class="flex items-center space-x-4">
                 <div class="relative">
-                    <img src="/frontend/assets/images/default-avatar." 
+                    <img src="/frontend/assets/images/default-avatar.svg" 
                          class="w-10 h-10 rounded-full border-2 border-gray-600 cursor-pointer"
                          alt="Profile">
                     <div class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-900"></div>
@@ -206,26 +220,27 @@ if (!isset($bodyContent)) {
         </div>
     </div>
 
-    <!-- Mobile Bottom Bar -->
     <div class="sm:hidden absolute bottom-0 w-full bg-gray-900 border-t border-gray-700">
-        <div class="flex justify-around items-center h-16">
-            <?php foreach (array_slice($menuItems, 0, 4) as $item): ?>
-            <a href="<?= $item['url'] ?>" class="p-3 text-gray-300 hover:text-blue-500 transition-colors">
-                <i class="fa-solid <?= $item['icon'] ?> text-xl"></i>
-            </a>
-            <?php endforeach; ?>
-        </div>
+    <div class="flex justify-around items-center h-16">
+        <?php foreach (array_slice($menuItems, 0, 4) as $item): ?>
+        <a href="<?= $item['url'] ?>" class="p-3 text-gray-300 hover:text-blue-500 transition-colors">
+            <i class="fa-solid <?= $item['icon'] ?> text-2xl"></i>
+        </a>
+        <?php endforeach; ?>
     </div>
+</div>
 </div>
 
 <style>
 :root {
     --primary-blue: #2563EB;
     --hover-blue: #3B82F6;
-    --dark-bg:rgb(0, 0, 0);
-    --nav-bg: #1F2937;
+    --dark-bg: #1F2937;
+    --nav-bg: #111827;
     --text-primary: #F9FAFB;
     --text-secondary: #9CA3AF;
+    --active-bg: #2563EB;
+    --hover-bg: #374151;
 }
 
 body {
