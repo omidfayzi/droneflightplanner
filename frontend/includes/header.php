@@ -179,7 +179,7 @@ $menuItems = [
         'text' => 'Monitoring'
     ],
     [
-        'url' => '#',
+        'url' => '/frontend/pages/resources_drones.php',
         'icon' => 'fa-folder-open', // Geldige FontAwesome-klasse
         'text' => 'Resources'
     ],
