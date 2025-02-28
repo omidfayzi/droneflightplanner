@@ -1,8 +1,6 @@
 <?php
 session_start();
 
-include __DIR__ . '/../includes/autoloader.php';
-
 // Stel variabelen in voor de header
 $showHeader = 1;
 $userName = $_SESSION['user']['first_name'] ?? 'Onbekend'; // Haal uit sessie
@@ -35,7 +33,6 @@ $bodyContent = "
         <div class='p-4 bg-white flex justify-between items-center border-b border-gray-200'>
             <div class='flex space-x-4 text-sm font-medium'>
                 <a href='/frontend/pages/resources_drones.php' class='text-black border-b-2 border-black pb-2'>Drones</a>
-                <a href='/frontend/pages/resources_personnel.php' class='text-gray-600 hover:text-gray-900'>Personeel</a>
                 <a href='/frontend/pages/resources_team.php' class='text-gray-600 hover:text-gray-900'>Team</a>
                 <a href='/frontend/pages/resources_addons.php' class='text-gray-600 hover:text-gray-900'>Add-ons</a>
             </div>

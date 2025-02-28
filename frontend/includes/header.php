@@ -126,7 +126,7 @@ if (!isset($bodyContent)) {
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   
   <!-- Eigen styles en scripts -->
-  <link rel="stylesheet" href="/src/frontend/assets/styles/custom12.css">
+  <link rel="stylesheet" href="/src/frontend/assets/styles/custom_styling.scss">
   <script src="/src/frontend/assets/scripts/global120.js"></script>
   <script src="/src/frontend/assets/scripts/idin.js"></script>
   <script src="/src/frontend/assets/scripts/database.js"></script>
