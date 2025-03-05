@@ -1,21 +1,18 @@
 <?php
-session_start();
+// /var/www/public/frontend/pages/dashboard.php
+// Dashboard-pagina voor het Drone Vluchtvoorbereidingssysteem
 
-// Include de benodigde functions.php voor login
-include __DIR__ . '/../../backend/functions/functions.php';
+// Laad de configuratie met relatief pad
+require_once __DIR__ . '/../../config/config.php';
 
-// Voer login uit
-login();
-
-// Stel minimale variabelen in voor de header
-$showHeader = 1;
-$userName = $_SESSION['user']['first_name'] ?? 'Onbekend';
-$org = 'Organisatie B'; // Voorbeeld, pas aan via sessie of database
+// Stel pagina-specifieke variabelen in
 $headTitle = "Dashboard";
-$gobackUrl = 0;
-$rightAttributes = 0;
+$userName = $_SESSION['user']['first_name'] ?? 'Onbekend';
+$org = $_SESSION['org'] ?? '';
+$gobackUrl = 0; // Geen terugknop nodig
+$rightAttributes = 0; // Geen SSO-knop, alleen profielicoon
 
-// Body content: Alleen de dashboard-content
+// Definieer body content (statische data, kan later dynamisch worden)
 $bodyContent = "
     <div class='h-[90vh] max-h-[90vh] mx-auto bg-white shadow-md rounded-tl-xl overflow-y-hidden w-13/15'>
         <div class='p-6 overflow-y-auto max-h-[calc(90vh-200px)]'>
@@ -73,7 +70,7 @@ $bodyContent = "
                                 <th class='p-4 text-left text-gray-600'>Locatie</th>
                                 <th class='p-4 text-left text-gray-600'>Uitgevoerd door</th>
                                 <th class='p-4 text-left text-gray-600'>Status</th>
-                                <th class='p-4'></th>
+                                <th class='p-4 text-left text-gray-600'></th>
                             </tr>
                         </thead>
                         <tbody class='divide-y divide-gray-200 text-sm'>
@@ -141,6 +138,5 @@ $bodyContent = "
     </div>
 ";
 
-// Inclusie van de header (volledige lay-out)
-include __DIR__ . '/../includes/header.php';
-?>
+// Gebruik de template
+require_once __DIR__ . '/template.php';
