@@ -1,10 +1,11 @@
 <?php
 session_start();
+require_once __DIR__ . '/../../config/config.php';
 
-// Stel variabelen in voor de header
+// Stel variabelen in voor template.php
 $showHeader = 1;
 $userName = $_SESSION['user']['first_name'] ?? 'Onbekend'; // Haal uit sessie
-$org = 'Organisatie A'; // Overeenkomend met de screenshot
+$org = isset($organisation) ? $organisation : 'Organisatie A'; // Dynamisch uit config.php, fallback naar Organisatie A
 $headTitle = "Resources";
 $gobackUrl = 0;
 $rightAttributes = 0; // Geen logout-knop, wel notificatie en profiel
@@ -122,6 +123,6 @@ $bodyContent = "
     </div>
 ";
 
-// Inclusie van de header (volledige lay-out)
-include __DIR__ . '/../includes/header.php';
+// Inclusie van template.php voor de volledige lay-out
+require_once __DIR__ . '/template.php';
 ?>

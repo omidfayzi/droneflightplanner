@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once __DIR__ . '/../../config/config.php';
 
 // Sla de gegevens van stap 3 op in de sessie (indien van toepassing)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -7,14 +8,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Voor dit voorbeeld gaan we ervan uit dat de gegevens al zijn verwerkt
 }
 
-// Stel variabelen in voor de header
+// Stel variabelen in voor template.php
 $showHeader = 1;
 $userName = $_SESSION['user']['first_name'] ?? 'Onbekend'; // Haal de voornaam uit de sessie
-$org = 'Organisatie A'; // Overeenkomend met de organisatie in de screenshot
+$org = isset($organisation) ? $organisation : 'Organisatie A'; // Dynamisch uit config.php, fallback naar Organisatie A
 $headTitle = "Vluchtplanning";
-$gobackUrl = 0; // Geen terug-knop in de header
-$rightAttributes = 0; // Geen logout-knop, wel notificatie- en profieliconen
+$gobackUrl = 0; // Geen terug-knop
+$rightAttributes = 0; // Geen logout-knop, wel notificatie en profiel
 
+// Body content voor Vluchtplanning Stap 4
 $bodyContent = "
     <div class='h-[90vh] max-h-[90vh] mx-auto bg-white shadow-md rounded-tl-xl overflow-y-hidden w-13/15'>
         <!-- Hoofding -->
@@ -67,6 +69,6 @@ $bodyContent = "
     </div>
 ";
 
-// Inclusie van de header (volledige lay-out)
-include __DIR__ . '/../includes/header.php';
+// Inclusie van template.php voor de volledige lay-out
+require_once __DIR__ . '/template.php';
 ?>
