@@ -1,20 +1,27 @@
 <?php
-// LET OP: pad aanpassen als nodig. Als je 'login()' gebruikt uit functions.php,
-// moet je eerst op de juiste plek includes doen:
-include '../../backend/functions/functions.php';
+// /var/www/public/frontend/pages/landing-page.php (of login.php)
+
+// Start de sessie als deze nog niet gestart is
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Laad de configuratie
+require_once __DIR__ . '/../../config/config.php';
+
+// Laad backend-functies expliciet
+require_once __DIR__ . '/../../backend/functions/functions.php';
+
+// Roep de login-functie aan
 login();
 
-// Voorbeeld: Stel dat $user uit de sessie komt:
-$user = $_SESSION["user"] ?? ['first_name' => 'Onbekend'];
-
-// Parameter-instellingen voor de header (als je deze doorgeeft aan header.php)
-$includeSetPlotName   = 0;
-$includeSetPrefName   = 0;
-$includeCheckWithIdin = 0;
-$rightAttributes      = 0;
-$gobackUrl            = 1;
-$headTitle            = fetchPropPrefTxt(46); // Of hard-coded tekst
-$showHeader           = 1;
+// Stel variabelen in voor template.php
+$showHeader = 1; // Navigatiemenu tonen
+$headTitle = fetchPropPrefTxt(46); // Dynamische titel
+$userName = $_SESSION['user']['first_name'] ?? 'Onbekend';
+$org = isset($organisation) ? $organisation : 'Organisatie A'; // Dynamisch uit config.php, fallback naar Organisatie A
+$gobackUrl = 1; // Toon terug-knop
+$rightAttributes = 0; // Geen extra knoppen
 
 // Body met de organisatie-selectie
 $bodyContent = "
@@ -22,7 +29,7 @@ $bodyContent = "
         <div class='w-[90%] bg-white rounded-xl p-5 max-w-md'>
             <h1 class='pb-2'>Selecteer organisatie</h1>
             <select id='mySelect' class='rounded-xl w-full mb-2' style='padding: 10px; background-color: #D9D9D9;'>
-                <option value='' disabled selected>".fetchPropPrefTxt(22)."</option>
+                <option value='' disabled selected>" . fetchPropPrefTxt(22) . "</option>
                 <option value='gebruiker'>Als gebruiker inloggen</option>
                 <option value='org1'>Fictieve Organisatie</option>
             </select>
@@ -37,19 +44,19 @@ $bodyContent = "
     </div>
 ";
 
-// Includen van je header (HTML-structuur + styling)
-include '../../frontend/includes/header.php';
+// Inclusie van template.php voor de volledige lay-out
+require_once __DIR__ . '/template.php'; // Aangepast pad
 ?>
 
 <script>
-    // Als je deze variabelen echt nodig hebt:
-    const cors                  = '<?php echo $corsAnywhere; ?>';
-    const user                  = '<?php echo $userOrgDatabaseUser; ?>';
-    const org                   = '<?php echo $userOrgDatabaseOrg; ?>';
-    const tokenBearerUserOrg    = '<?php echo $userOrgDatabaseBearerToken; ?>';
+    // Variabelen die mogelijk nodig zijn (commentaar als ze niet essentieel zijn)
+    // const cors = '<?php echo $cors ?? ''; ?>';
+    // const user = '<?php echo $userOrgDatabaseUser ?? ''; ?>';
+    // const org = '<?php echo $userOrgDatabaseOrg ?? ''; ?>';
+    // const tokenBearerUserOrg = '<?php echo $userOrgDatabaseBearerToken ?? ''; ?>';
 
     // Overige variabelen en testcode
-    let i = 1; // Voorbeeld, als je dit niet gebruikt, kun je het weglaten.
+    let i = 1; // Voorbeeld, kan worden verwijderd als niet gebruikt
     const orgArray = [];
 
     // Eventuele functies voor token etc...

@@ -6,22 +6,24 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Laad de Composer-autoloader en .env-variabelen.
-// Omdat je .env-map zich in /var/www/env bevindt, gebruiken we dat absolute pad.
+// Laad de Composer-autoloader
 require __DIR__ . '/vendor/autoload.php';
-use Dotenv\Dotenv;
-$dotenv = Dotenv::createImmutable('/var/www/env');
-$dotenv->load();
+
+// Laad de configuratie
+require_once __DIR__ . '/config/config.php'; // Pas dit pad aan naar de juiste locatie
 
 // Inclusie van backend-functies (indien nodig)
 include __DIR__ . '/backend/functions/functions.php';
 
-// Stel variabelen voor de welkomstpagina (landing‑page)
-// Door $showHeader op 0 te zetten, wordt het navigatiemenu in header.php verborgen.
-$showHeader  = 0;
-$headTitle   = 'Drone Vluchtvoorbereidingssysteem';
+// Stel variabelen voor template.php
+$showHeader = 0; // Geen navigatiemenu tonen
+$headTitle = 'Drone Vluchtvoorbereidingssysteem';
+$userName = $_SESSION['user']['first_name'] ?? 'Onbekend';
+$org = isset($organisation) ? $organisation : 'Organisatie A'; // Dynamisch uit config.php, fallback naar Organisatie A
+$gobackUrl = 0; // Geen terug-knop
+$rightAttributes = 0; // Geen extra knoppen
 
-// Welkomstpagina (landing‑page) content met de juiste paden voor afbeeldingen en styling
+// Welkomstpagina (landing-page) content met de juiste paden voor afbeeldingen en styling
 $bodyContent = '
     <!-- Hero Section -->
     <div class="min-h-screen flex flex-col justify-center items-center relative bg-cover bg-center" style="background-image: url(\'/frontend/assets/images/background_background.jpg\');">
@@ -63,12 +65,6 @@ $bodyContent = '
     </div>
 ';
 
-// Stel eventueel extra variabelen in (bijvoorbeeld uit de sessie)
-$userName = isset($_SESSION['user']['first_name']) ? $_SESSION['user']['first_name'] : 'Onbekend';
-$org      = isset($_SESSION['org']) ? $_SESSION['org'] : '';
-
-// Inclusie van de header.
-// In jouw structuur bevindt header.php zich in /src/frontend/includes/
-// Dit bestand genereert de volledige HTML-pagina, gebruikt $showHeader om te bepalen of de navigatie getoond wordt en geeft de $bodyContent weer.
-include __DIR__ . '/frontend/includes/header.php';
+// Inclusie van template.php voor de volledige lay-out
+require_once __DIR__ . '/frontend/pages/template.php';
 ?>

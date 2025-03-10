@@ -14,29 +14,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $showHeader = 1;
 $userName = $_SESSION['user']['first_name'] ?? 'Onbekend'; // Gebruikersnaam uit sessie
 $org = isset($organisation) ? $organisation : 'Organisatie B'; // Dynamisch uit config.php of fallback
-$headTitle = "Vluchtplanning";
+$headTitle = "Risicoanalyse";  // Paginatitel
 $gobackUrl = 0; // Geen terug-knop
 $rightAttributes = 0; // Geen logout, wel notificaties en profiel
 
 // Body content voor Vluchtplanning Stap 2
 $bodyContent = "
-    <div class='h-[90vh] max-h-[90vh] mx-auto bg-white shadow-md rounded-tl-xl overflow-y-hidden w-13/15'>
-        <!-- Hoofding -->
-        <div class='p-4 bg-white border-b border-gray-200 flex justify-between items-center'>
-            <div>
-                <h1 class='text-2xl font-bold text-gray-900'>Vluchtplanning</h1>
-                <p class='text-sm text-gray-500'>Laatste update: 15 minuten geleden, " . htmlspecialchars($org) . "</p>
-            </div>
-            <div class='flex items-center space-x-4'>
-                <div class='relative'>
-                    <i class='fa-solid fa-bell text-gray-600 hover:text-gray-800 cursor-pointer'></i>
-                    <span class='absolute -top-1 -right-1 bg-red-600 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center'>3</span>
-                </div>
-                <a href='/src/frontend/pages/profile.php' class='text-gray-600 hover:text-gray-800'>
-                    <i class='fa-solid fa-user text-xl'></i>
-                </a>
-            </div>
-        </div>
+    <div class='h-[85.5vh] mx-auto bg-white shadow-md rounded-tl-xl overflow-y-hidden w-13/15'>
 
         <!-- Stappenbalk -->
         <div class='p-4 bg-gray-100'>
@@ -90,6 +74,6 @@ $bodyContent = "
     </div>
 ";
 
-// Inclusie van template.php voor de volledige lay-out
+require_once __DIR__ . '/componments/header.php'; 
 require_once __DIR__ . '/template.php';
 ?>

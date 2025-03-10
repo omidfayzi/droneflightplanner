@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once __DIR__ . '/../../config/config.php';
 
 // Stel variabelen in voor de header
 $showHeader = 1;
@@ -11,26 +12,10 @@ $rightAttributes = 0; // Geen logout-knop, wel notificatie- en profieliconen
 
 // Body content voor Team-pagina
 $bodyContent = "
-    <div class='h-[90vh] max-h-[90vh] mx-auto bg-gray-100 shadow-md rounded-tl-xl overflow-y-hidden w-13/15'>
-        <!-- Hoofding -->
-        <div class='p-4 bg-white border-b border-gray-200 flex justify-between items-center'>
-            <div>
-                <h1 class='text-2xl font-bold text-gray-900'>Resources</h1>
-                <p class='text-sm text-gray-500'>Laatste update: 15 minuten geleden, " . htmlspecialchars($org) . "</p>
-            </div>
-            <div class='flex items-center space-x-4'>
-                <div class='relative'>
-                    <i class='fa-solid fa-bell text-gray-600 hover:text-gray-800 cursor-pointer'></i>
-                    <span class='absolute -top-1 -right-1 bg-red-600 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center'>3</span>
-                </div>
-                <a href='/src/frontend/pages/profile.php' class='text-gray-600 hover:text-gray-800'>
-                    <i class='fa-solid fa-user text-xl'></i>
-                </a>
-            </div>
-        </div>
+    <div class='h-[85.5vh] mx-auto bg-gray-100 shadow-md rounded-tl-xl overflow-y-hidden w-13/15'>
 
         <!-- Navigatie en Actieknop -->
-        <div class='p-4 bg-white flex justify-between items-center border-b border-gray-200'>
+        <div class='p-8 bg-white flex justify-between items-center border-b border-gray-200'>
             <div class='flex space-x-4 text-sm font-medium'>
                 <a href='/frontend/pages/resources_drones.php' class='text-gray-600 hover:text-gray-900'>Drones</a>
                 <a href='/frontend/pages/team.php' class='text-black border-b-2 border-black pb-2'>Team</a>
@@ -123,6 +108,6 @@ $bodyContent = "
     </div>
 ";
 
-// Inclusie van de header voor de volledige lay-out
-include __DIR__ . '/../includes/header.php';
+require_once __DIR__ . '/componments/header.php'; 
+require_once __DIR__ . '/template.php';
 ?>

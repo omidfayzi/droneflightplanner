@@ -228,53 +228,11 @@ if (is_dir($componentsDir)) {
         </div>
     </div>
 
-    <!-- Main Content -->
-    <div class="sm:ml-64 min-h-screen bg-gray-50 p-8">
-        <div class="flex justify-between items-center mb-8">
-            <div class="flex items-center space-x-4">
-                <?php if ($gobackUrl): ?>
-                    <button class="text-gray-600 hover:text-gray-800 transition-colors p-2 rounded-lg" onclick="history.back()">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-                        </svg>
-                    </button>
-                <?php endif; ?>
-                <h1 class="text-2xl font-bold text-gray-900"><?php echo htmlspecialchars($headTitle); ?></h1>
-            </div>
-            <div class="flex items-center space-x-4">
-                <?php if (isset($saveAttributes)): ?>
-                    <button id="<?php echo htmlspecialchars($saveAttributes); ?>" 
-                            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
-                            onclick="<?php echo htmlspecialchars($saveAttributes); ?>">
-                        Opslaan
-                    </button>
-                <?php endif; ?>
-                <?php if ($rightAttributes == 1): ?>
-                    <a href="/sso.php" class="text-gray-600 hover:text-gray-800 p-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
-                        </svg>
-                    </a>
-                <?php else: ?>
-                    <a href="/frontend/pages/profile.php" class="text-gray-600 hover:text-gray-800 p-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                        </svg>
-                    </a>
-                <?php endif; ?>
-            </div>
-        </div>
-        
-        <div id="content" class="bg-white rounded-xl shadow-sm p-6">
-            <?php echo $bodyContent; ?>
-        </div>
-        
-        <div id="popup" class="fixed top-20 right-8 z-50 hidden">
-            <div id="popup-content" class="bg-blue-600 text-white rounded-lg shadow-xl p-4 w-64 text-center">
-                <p id="popup-message" class="font-medium"></p>
-            </div>
-        </div>
+    <!-- Main Content of the page -->
+    <div class="sm:ml-64 max-h-[90h] bg-gray-50 p-8 overflow-hidden">
+        <?php echo $bodyContent; ?>
     </div>
+    
 <?php else: ?>
     <?php echo $bodyContent; ?>
 <?php endif; ?>
