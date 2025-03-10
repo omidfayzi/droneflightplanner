@@ -107,6 +107,6 @@ $bodyContent = "
     </div>
 ";
 
-require_once __DIR__ . '/componments/header.php'; 
+require_once __DIR__ . '/components/header.php'; 
 require_once __DIR__ . '/template.php';
 ?>
