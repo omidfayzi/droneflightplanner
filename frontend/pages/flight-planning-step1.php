@@ -12,7 +12,7 @@ $rightAttributes = 0; // Geen logout, wel notificaties en profiel
 
 // Body content voor Vluchtplanning Stap 1
 $bodyContent = "
-    <div class='h-[85.5vh] mx-auto bg-white shadow-md rounded-tl-xl overflow-y-hidden w-13/15'>
+    <div class='h-[83.5vh] bg-gray-100 shadow-md rounded-tl-xl w-13/15'>
 
         <!-- Stappenbalk -->
         <div class='p-4 bg-gray-100'>

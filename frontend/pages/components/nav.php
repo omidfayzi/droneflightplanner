@@ -9,7 +9,7 @@ global $config, $userName, $org;
 $menuItems = [
     ['url' => '/frontend/pages/dashboard.php', 'icon' => 'fa-chart-line', 'text' => 'Dashboard'],
     ['url' => '/frontend/pages/flight-planning-step1.php', 'icon' => 'fa-map-marked-alt', 'text' => 'Vluchtplanning'],
-    ['url' => '#', 'icon' => 'fa-chart-bar', 'text' => 'Monitoring'],
+    ['url' => '/frontend/pages/monitoring.php', 'icon' => 'fa-chart-bar', 'text' => 'Monitoring'],
     ['url' => '/frontend/pages/resources_drones.php', 'icon' => 'fa-folder-open', 'text' => 'Resources'],
     ['url' => '/frontend/pages/team.php', 'icon' => 'fa-users-cog', 'text' => 'Teambeheer']
 ];

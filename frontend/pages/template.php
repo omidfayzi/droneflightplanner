@@ -162,12 +162,14 @@ if (is_dir($componentsDir)) {
             <!-- Profile Section -->
             <div class="mt-auto w-full p-4 border-t border-gray-700 flex justify-center items-center my-4">
                 <div class="flex items-center space-x-4">
-                    <div class="relative">
-                        <img src="/frontend/assets/images/default-avatar.svg" 
-                             class="w-10 h-10 rounded-full border-2 border-gray-600 cursor-pointer"
-                             alt="Profile">
-                        <div class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-900"></div>
-                    </div>
+                    <a href="/src/frontend/pages/profile.php">
+                        <div class="relative">
+                            <img src="/frontend/assets/images/default-avatar.svg" 
+                                class="w-10 h-10 rounded-full border-2 border-gray-600 cursor-pointer"
+                                alt="Profile">
+                            <div class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-900"></div>
+                        </div>
+                    </a>
                     <div>
                         <p class="text-sm font-medium text-gray-100"><?php echo htmlspecialchars($userName); ?></p>
                         <p class="text-xs text-gray-400"><?php echo htmlspecialchars($org); ?></p>
@@ -183,7 +185,7 @@ if (is_dir($componentsDir)) {
     </div>
 
     <!-- Main Content of the page -->
-    <div class="sm:ml-64 max-h-[90h] bg-gray-50 p-8 overflow-hidden">
+    <div class="sm:ml-64 h-[90h] bg-gray-50 p-8 overflow-hidden">
         <?php echo $bodyContent; ?>
     </div>
     

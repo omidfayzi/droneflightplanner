@@ -12,7 +12,7 @@ $rightAttributes = 0; // Geen logout-knop, wel notificatie en profiel
 
 // Body content voor Resources - Drones
 $bodyContent = "
-    <div class='h-[85.5vh] mx-auto bg-gray-100 shadow-md rounded-tl-xl overflow-y-hidden w-13/15'>
+    <div class='h-[83.5vh] bg-gray-100 shadow-md rounded-tl-xl w-13/15'>
 
         <!-- Navigatie en Actieknop -->
         <div class='p-8 bg-white flex justify-between items-center border-b border-gray-200'>

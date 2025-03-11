@@ -14,7 +14,7 @@ $rightAttributes = 0; // Geen SSO-knop, alleen profielicoon
 
 // Definieer body content (statische data, kan later dynamisch worden)
 $bodyContent = "
-    <div class='h-[85.5vh] mx-auto bg-gray-200 shadow-md rounded-tl-xl overflow-y-hidden w-13/15'>
+    <div class='h-[83.5vh] bg-gray-100 shadow-md rounded-tl-xl w-13/15'>
         <div class='p-6 overflow-y-auto max-h-[calc(90vh-200px)]'>
             <!-- KPI Grid -->
             <div class='grid grid-cols-1 md:grid-cols-3 gap-6 mb-8'>
