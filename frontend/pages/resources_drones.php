@@ -17,8 +17,9 @@ $bodyContent = "
         <!-- Navigatie en Actieknop -->
         <div class='p-8 bg-white flex justify-between items-center border-b border-gray-200'>
             <div class='flex space-x-4 text-sm font-medium'>
-                <a href='/frontend/pages/resources_drones.php' class='text-black border-b-2 border-black pb-2'>Drones</a>
-                <a href='/frontend/pages/resources_team.php' class='text-gray-600 hover:text-gray-900'>Team</a>
+                <a href='/frontend/pages/resources_drones.php' class='text-gray-600 hover:text-gray-900 border-b-2 border-black pb-2'>Drones</a>
+                <a href='/frontend/pages/resources_teams.php' class='text-gray-600 hover:text-gray-900'>Teams</a>
+                <a href='/frontend/pages/resources_personeel.php' class='text-blackborder-b-2 border-black pb-2'>Personeel</a>
                 <a href='/frontend/pages/resources_addons.php' class='text-gray-600 hover:text-gray-900'>Add-ons</a>
             </div>
             <button class='bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors'>

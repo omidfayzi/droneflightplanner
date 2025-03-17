@@ -11,7 +11,7 @@ $menuItems = [
     ['url' => '/frontend/pages/flight-planning-step1.php', 'icon' => 'fa-map-marked-alt', 'text' => 'Vluchtplanning'],
     ['url' => '/frontend/pages/monitoring.php', 'icon' => 'fa-chart-bar', 'text' => 'Monitoring'],
     ['url' => '/frontend/pages/resources_drones.php', 'icon' => 'fa-folder-open', 'text' => 'Resources'],
-    ['url' => '/frontend/pages/team.php', 'icon' => 'fa-users-cog', 'text' => 'Teambeheer']
+    ['url' => '/frontend/pages/teams.php', 'icon' => 'fa-users-cog', 'text' => 'Teambeheer']
 ];
 ?>
 
