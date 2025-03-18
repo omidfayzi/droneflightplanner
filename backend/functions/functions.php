@@ -38,7 +38,7 @@ function login() {
  * Haalt tekst op via een externe API en kijkt naar de gekozen taal.
  */
 function fetchPropPrefTxt($id) {
-    $url = "https://api.droneperceelvoorkeuren.nl/get-txt-with-id/$id"; 
+    $url = "https://api2.droneflightplanner.nl/get-txt-with-id/$id"; 
 
     // Ophalen van data via file_get_contents
     $response = file_get_contents($url);

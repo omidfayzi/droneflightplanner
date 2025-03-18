@@ -5,12 +5,16 @@
 // Laad de configuratie met relatief pad
 require_once __DIR__ . '/../../config/config.php';
 
+require_once __DIR__ . '/../../backend/functions/functions.php'; 
+
 // Stel pagina-specifieke variabelen in
 $headTitle = "Dashboard";
 $userName = $_SESSION['user']['first_name'] ?? 'Onbekend';
 $org = $_SESSION['org'] ?? '';
 $gobackUrl = 0; // Geen terugknop nodig
 $rightAttributes = 0; // Geen SSO-knop, alleen profielicoon
+
+echo fetchPropPrefTxt(1);
 
 // Definieer body content (statische data, kan later dynamisch worden)
 $bodyContent = "

@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once __DIR__ . '/../../config/config.php';
+require_once __DIR__ . '/../../backend/functions/functions.php'; 
 
 // Sla de gegevens van stap 2 op in de sessie (indien nodig)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

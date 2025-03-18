@@ -3,6 +3,7 @@
 // Monitoring-pagina voor het Drone Vluchtvoorbereidingssysteem
 
 require_once __DIR__ . '/../../config/config.php';
+require_once __DIR__ . '/../../backend/functions/functions.php'; 
 
 // Stel pagina-specifieke variabelen in
 $headTitle = "Monitoring";

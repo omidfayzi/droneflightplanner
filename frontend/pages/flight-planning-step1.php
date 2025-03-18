@@ -1,6 +1,10 @@
 <?php
+// /var/www/public/frontend/pages/flight-planning-step1.php
+// Vlcuht
+
 session_start();
 require_once __DIR__ . '/../../config/config.php';
+require_once __DIR__ . '/../../backend/functions/functions.php'; 
 
 // Stel variabelen in voor template.php
 $showHeader = 1;
