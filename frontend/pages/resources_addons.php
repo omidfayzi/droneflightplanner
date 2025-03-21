@@ -1,26 +1,31 @@
 <?php
-session_start();
+// Start sessie veilig
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Laad benodigde bestanden
 require_once __DIR__ . '/../../config/config.php';
-require_once __DIR__ . '/../../backend/functions/functions.php'; 
+require_once __DIR__ . '/../../backend/functions/functions.php';
 
 // Stel variabelen in voor template.php
 $showHeader = 1;
-$userName = $_SESSION['user']['first_name'] ?? 'Onbekend'; // Haal uit sessie
-$org = isset($organisation) ? $organisation : 'Organisatie A'; // Dynamisch uit config.php, fallback naar Organisatie A
-$headTitle = "Add-ons"; // Paginatitel
+$userName = $_SESSION['user']['first_name'] ?? 'Onbekend';
+$org = isset($organisation) ? $organisation : 'Organisatie A';
+$headTitle = "Add-ons";
 $gobackUrl = 0;
-$rightAttributes = 0; // Geen logout-knop, wel notificatie en profiel
+$rightAttributes = 0;
 
-// Body content zonder header, maar met navigatie en hoofdinhoud
+// Body content
 $bodyContent = "
     <div class='h-[83.5vh] bg-gray-100 shadow-md rounded-tl-xl w-13/15'>
         <!-- Navigatie en Actieknop -->
         <div class='p-8 bg-white flex justify-between items-center border-b border-gray-200'>
             <div class='flex space-x-4 text-sm font-medium'>
-                <a href='/frontend/pages/resources_drones.php' class='text-gray-600 hover:text-gray-900'>Drones</a>
-                <a href='/frontend/pages/resources_teams.php' class='text-gray-600 hover:text-gray-900'>Teams</a>
-                <a href='/frontend/pages/resources_personeel.php' class='text-black'>Personeel</a>
-                <a href='/frontend/pages/resources_addons.php' class='text-gray-600 hover:text-gray-900  border-b-2 border-black pb-2'>Add-ons</a>
+                <a href='./resources_drones.php' class='text-gray-600 hover:text-gray-900'>Drones</a>
+                <a href='./resources_teams.php' class='text-gray-600 hover:text-gray-900'>Teams</a>
+                <a href='./resources_personeel.php' class='text-black'>Personeel</a>
+                <a href='./resources_addons.php' class='text-gray-600 hover:text-gray-900 border-b-2 border-black pb-2'>Add-ons</a>
             </div>
             <button class='bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors'>
                 + Nieuw item
@@ -53,10 +58,10 @@ $bodyContent = "
                                     <span class='bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium'>Actief</span>
                                 </td>
                                 <td class='p-4 text-right'>
-                                    <a href='#' class='text-gray-600 hover:text-gray-800 transition mr-2'>
+                                    <a href='edit.php?id=1' class='text-gray-600 hover:text-gray-800 transition mr-2'>
                                         <i class='fa-solid fa-pencil'></i>
                                     </a>
-                                    <a href='#' class='text-red-600 hover:text-red-800 transition'>
+                                    <a href='delete.php?id=1' class='text-red-600 hover:text-red-800 transition'>
                                         <i class='fa-solid fa-trash'></i>
                                     </a>
                                 </td>
@@ -69,94 +74,15 @@ $bodyContent = "
                                     <span class='bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium'>Nieuw</span>
                                 </td>
                                 <td class='p-4 text-right'>
-                                    <a href='#' class='text-gray-600 hover:text-gray-800 transition mr-2'>
+                                    <a href='edit.php?id=2' class='text-gray-600 hover:text-gray-800 transition mr-2'>
                                         <i class='fa-solid fa-pencil'></i>
                                     </a>
-                                    <a href='#' class='text-red-600 hover:text-red-800 transition'>
+                                    <a href='delete.php?id=2' class='text-red-600 hover:text-red-800 transition'>
                                         <i class='fa-solid fa-trash'></i>
                                     </a>
                                 </td>
                             </tr>
-                            <tr class='hover:bg-gray-50 transition'>
-                                <td class='p-4 text-gray-800'>Gimbal</td>
-                                <td class='p-4 text-gray-600'>DJI RONIN</td>
-                                <td class='p-4 text-gray-600'>GIM-67890</td>
-                                <td class='p-4'>
-                                    <span class='bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium'>Actief</span>
-                                </td>
-                                <td class='p-4 text-right'>
-                                    <a href='#' class='text-gray-600 hover:text-gray-800 transition mr-2'>
-                                        <i class='fa-solid fa-pencil'></i>
-                                    </a>
-                                    <a href='#' class='text-red-600 hover:text-red-800 transition'>
-                                        <i class='fa-solid fa-trash'></i>
-                                    </a>
-                                </td>
-                            </tr>
-                            <tr class='hover:bg-gray-50 transition'>
-                                <td class='p-4 text-gray-800'>Filter</td>
-                                <td class='p-4 text-gray-600'>ND Filter</td>
-                                <td class='p-4 text-gray-600'>FLT-1111</td>
-                                <td class='p-4'>
-                                    <span class='bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium'>Nieuw</span>
-                                </td>
-                                <td class='p-4 text-right'>
-                                    <a href='#' class='text-gray-600 hover:text-gray-800 transition mr-2'>
-                                        <i class='fa-solid fa-pencil'></i>
-                                    </a>
-                                    <a href='#' class='text-red-600 hover:text-red-800 transition'>
-                                        <i class='fa-solid fa-trash'></i>
-                                    </a>
-                                </td>
-                            </tr>
-                            <tr class='hover:bg-gray-50 transition'>
-                                <td class='p-4 text-gray-800'>RemoteID</td>
-                                <td class='p-4 text-gray-600'>REMOTEID V2</td>
-                                <td class='p-4 text-gray-600'>RID-2222</td>
-                                <td class='p-4'>
-                                    <span class='bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium'>Actief</span>
-                                </td>
-                                <td class='p-4 text-right'>
-                                    <a href='#' class='text-gray-600 hover:text-gray-800 transition mr-2'>
-                                        <i class='fa-solid fa-pencil'></i>
-                                    </a>
-                                    <a href='#' class='text-red-600 hover:text-red-800 transition'>
-                                        <i class='fa-solid fa-trash'></i>
-                                    </a>
-                                </td>
-                            </tr>
-                            <tr class='hover:bg-gray-50 transition'>
-                                <td class='p-4 text-gray-800'>Props</td>
-                                <td class='p-4 text-gray-600'>Propeller X</td>
-                                <td class='p-4 text-gray-600'>PRP-3333</td>
-                                <td class='p-4'>
-                                    <span class='bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium'>Nieuw</span>
-                                </td>
-                                <td class='p-4 text-right'>
-                                    <a href='#' class='text-gray-600 hover:text-gray-800 transition mr-2'>
-                                        <i class='fa-solid fa-pencil'></i>
-                                    </a>
-                                    <a href='#' class='text-red-600 hover:text-red-800 transition'>
-                                        <i class='fa-solid fa-trash'></i>
-                                    </a>
-                                </td>
-                            </tr>
-                            <tr class='hover:bg-gray-50 transition'>
-                                <td class='p-4 text-gray-800'>Controller</td>
-                                <td class='p-4 text-gray-600'>DJI SMART CONTROLLER</td>
-                                <td class='p-4 text-gray-600'>CTRL-4444</td>
-                                <td class='p-4'>
-                                    <span class='bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium'>Actief</span>
-                                </td>
-                                <td class='p-4 text-right'>
-                                    <a href='#' class='text-gray-600 hover:text-gray-800 transition mr-2'>
-                                        <i class='fa-solid fa-pencil'></i>
-                                    </a>
-                                    <a href='#' class='text-red-600 hover:text-red-800 transition'>
-                                        <i class='fa-solid fa-trash'></i>
-                                    </a>
-                                </td>
-                            </tr>
+                            <!-- Voeg meer rijen toe met dynamische ID's -->
                         </tbody>
                     </table>
                 </div>
@@ -165,7 +91,7 @@ $bodyContent = "
     </div>
 ";
 
-// Inclusie van header-component en template.php
-require_once __DIR__ . '/components/header.php'; 
+// Inclusie van header en template
+require_once __DIR__ . '/components/header.php';
 require_once __DIR__ . '/template.php';
 ?>

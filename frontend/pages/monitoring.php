@@ -1,20 +1,23 @@
 <?php
-// /var/www/public/frontend/pages/monitoring.php
-// Monitoring-pagina voor het Drone Vluchtvoorbereidingssysteem
+// Start sessie veilig
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
+// Laad benodigde bestanden
 require_once __DIR__ . '/../../config/config.php';
-require_once __DIR__ . '/../../backend/functions/functions.php'; 
+require_once __DIR__ . '/../../backend/functions/functions.php';
 
 // Stel pagina-specifieke variabelen in
 $headTitle = "Monitoring";
 $userName = $_SESSION['user']['first_name'] ?? 'Onbekend';
-$org = $_SESSION['org'] ?? '';
+$org = $_SESSION['org'] ?? 'Onbekende Organisatie';
 $gobackUrl = 0; // Geen terugknop nodig
 $rightAttributes = 0; // Geen SSO-knop, alleen profielicoon
 
-// Definieer body content (dynamische data, aangepaste lay-out)
+// Definieer body content
 $bodyContent = "
-    <div class='h-[83.5v] mx-auto flex bg-gray-200 shadow-md rounded-xl overflow-y-auto w-13/15'>
+    <div class='h-[83.5vh] mx-auto flex bg-gray-200 shadow-md rounded-xl overflow-y-auto w-13/15'>
         <!-- Linkerkolom: Kaart/Grafiek Placeholder -->
         <div class='w-2/3 p-6'>
             <div id='mapPlaceholder' class='w-full h-full bg-gray-300 rounded-lg'>
@@ -68,27 +71,26 @@ $bodyContent = "
         </div>
     </div>
     <script>
-        // Basis JavaScript voor knopinteracties (placeholders)
+        // JavaScript voor knopinteracties
         document.getElementById('startButton').addEventListener('click', function() {
             alert('Vlucht gestart!');
-            // Voeg hier logica toe om de vlucht te starten
+            // TODO: Voeg API-call toe om de vlucht te starten
         });
 
         document.getElementById('pauseButton').addEventListener('click', function() {
             alert('Vlucht gepauzeerd!');
-            // Voeg hier logica toe om de vlucht te pauzeren
+            // TODO: Voeg API-call toe om de vlucht te pauzeren
         });
 
         document.getElementById('emergencyButton').addEventListener('click', function() {
             if (confirm('Weet je zeker dat je een noodstop wilt uitvoeren?')) {
                 alert('Noodstop uitgevoerd!');
-                // Voeg hier logica toe om de noodstop te activeren
+                // TODO: Voeg API-call toe om de noodstop te activeren
             }
         });
     </script>
 ";
 
 // Gebruik de template
-require_once __DIR__ . '/components/header.php'; 
+require_once __DIR__ . '/components/header.php';
 require_once __DIR__ . '/template.php';
-?>

@@ -1,20 +1,24 @@
 <?php
-session_start();
+// Start sessie veilig
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 require_once __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../backend/functions/functions.php'; 
 
-// Sla de gegevens van stap 2 op in de sessie (indien nodig)
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Voeg hier logica toe om gegevens van Stap 2 op te slaan, indien nodig
+    $_SESSION['step2_data'] = $_POST; // Voorbeeld: sla alle POST-data op
 }
 
 // Stel variabelen in voor template.php
 $showHeader = 1;
-$userName = $_SESSION['user']['first_name'] ?? 'Onbekend'; // Haal uit sessie
-$org = isset($organisation) ? $organisation : 'Organisatie A'; // Dynamisch uit config.php, fallback naar Organisatie A
-$headTitle = "Goedkeuring"; // Paginatitel
-$gobackUrl = 0; // Geen terug-knop
-$rightAttributes = 0; // Geen logout-knop, wel notificatie en profiel
+$userName = $_SESSION['user']['first_name'] ?? 'Onbekend';
+$org = isset($organisation) ? $organisation : 'Organisatie A';
+$headTitle = "Goedkeuring";
+$gobackUrl = 0;
+$rightAttributes = 0;
 
 // Body content voor Vluchtplanning Stap 3
 $bodyContent = "
@@ -35,7 +39,7 @@ $bodyContent = "
         <!-- Content -->
         <div class='p-6 overflow-y-auto max-h-[calc(90vh-200px)]'>
             <h2 class='text-xl font-bold mb-4 text-gray-800'>Goedkeuring aanvragen</h2>
-            <form action='/frontend/pages/flight-planning-step4.php' method='post' class='space-y-6'>
+            <form action='flight-planning-step4.php' method='post' class='space-y-6'>
                 <div class='bg-white rounded-lg shadow-md p-4'>
                     <h3 class='text-lg font-semibold mb-3 text-gray-700'>Vereiste vergunningen</h3>
                     <div class='space-y-3'>
@@ -63,7 +67,7 @@ $bodyContent = "
                     </div>
                 </div>
                 <div class='flex justify-between items-center mt-6'>
-                    <a href='/frontend/pages/flight-planning-step2.php' class='text-gray-500 hover:text-gray-700 flex items-center text-sm px-3 py-2'>
+                    <a href='flight-planning-step2.php' class='text-gray-500 hover:text-gray-700 flex items-center text-sm px-3 py-2'>
                         <i class='fa-solid fa-arrow-left mr-2'></i> Vorige stap
                     </a>
                     <button type='submit' class='bg-black text-white px-6 py-3 rounded-full hover:bg-gray-800 transition-colors flex items-center'>
@@ -74,6 +78,7 @@ $bodyContent = "
         </div>
     </div>
 ";
+
 require_once __DIR__ . '/components/header.php'; 
 require_once __DIR__ . '/template.php';
 ?>

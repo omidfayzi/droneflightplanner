@@ -1,6 +1,6 @@
 <?php
 // /var/www/public/frontend/pages/flight-planning-step1.php
-// Vlcuht
+// Vluchtplanning Stap 1
 
 session_start();
 require_once __DIR__ . '/../../config/config.php';
@@ -9,7 +9,6 @@ require_once __DIR__ . '/../../backend/functions/functions.php';
 // Stel variabelen in voor template.php
 $showHeader = 1;
 $userName = $_SESSION['user']['first_name'] ?? 'Onbekend'; // Gebruikersnaam uit sessie
-$title = isset($headTitle); // Gebruik $headTitle als beschikbaar
 $headTitle = "Basis"; // Paginatitel
 $gobackUrl = 0; // Geen terug-knop
 $rightAttributes = 0; // Geen logout, wel notificaties en profiel
@@ -34,7 +33,7 @@ $bodyContent = "
         <!-- Content -->
         <div class='p-6 overflow-y-auto max-h-[calc(90vh-200px)]'>
             <h2 class='text-xl font-bold mb-4 text-gray-800'>Basisgegevens</h2>
-            <form action='/frontend/pages/flight-planning-step2.php' method='post' class='space-y-6'>
+            <form action='flight-planning-step2.php' method='post' class='space-y-6'>
                 <div>
                     <label class='block text-sm font-medium text-gray-700 mb-1'>Vluchttype</label>
                     <select name='flight_type' class='w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500' required>

@@ -5,6 +5,7 @@
 // Laad de configuratie met relatief pad
 require_once __DIR__ . '/../../config/config.php';
 
+// Laad backend-functies met relatief pad
 require_once __DIR__ . '/../../backend/functions/functions.php'; 
 
 // Stel pagina-specifieke variabelen in
@@ -14,6 +15,7 @@ $org = $_SESSION['org'] ?? '';
 $gobackUrl = 0; // Geen terugknop nodig
 $rightAttributes = 0; // Geen SSO-knop, alleen profielicoon
 
+// Roep functie aan (verondersteld gedefinieerd in functions.php)
 echo fetchPropPrefTxt(1);
 
 // Definieer body content (statische data, kan later dynamisch worden)
@@ -142,5 +144,6 @@ $bodyContent = "
     </div>
 ";
 
+// Inclusie van header-component en template.php met relatieve paden
 require_once __DIR__ . '/components/header.php'; 
 require_once __DIR__ . '/template.php';

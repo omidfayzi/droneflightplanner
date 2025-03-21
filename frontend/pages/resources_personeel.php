@@ -1,15 +1,20 @@
 <?php
-session_start();
-require_once __DIR__ . '/../../config/config.php';
-require_once __DIR__ . '/../../backend/functions/functions.php'; 
+// Start sessie veilig
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
-// Variabelen voor template.php
+// Laad benodigde bestanden
+require_once __DIR__ . '/../../config/config.php';
+require_once __DIR__ . '/../../backend/functions/functions.php';
+
+// Stel variabelen in voor template.php
 $showHeader = 1;
-$userName = $_SESSION['user']['first_name'] ?? 'Onbekend'; // Gebruikersnaam uit sessie
-$org = isset($organisation) ? $organisation : 'Organisatie A'; // Organisatie uit config
-$headTitle = "Personeelsbeheer"; // Paginatitel
-$gobackUrl = 0; // Geen terug-knop
-$rightAttributes = 0; // Standaard header-attributen
+$userName = $_SESSION['user']['first_name'] ?? 'Onbekend';
+$org = isset($organisation) ? $organisation : 'Organisatie A';
+$headTitle = "Personeelsbeheer";
+$gobackUrl = 0;
+$rightAttributes = 0;
 
 // Body content
 $bodyContent = "
@@ -17,10 +22,10 @@ $bodyContent = "
         <!-- Navigatie -->
         <div class='p-8 bg-white flex justify-between items-center border-b border-gray-200'>
             <div class='flex space-x-4 text-sm font-medium'>
-                <a href='/frontend/pages/resources_drones.php' class='text-gray-600 hover:text-gray-900'>Drones</a>
-                <a href='/frontend/pages/resources_teams.php' class='text-gray-600 hover:text-gray-900'>Teams</a>
-                <a href='/frontend/pages/resources_personeel.php' class='text-black border-b-2 border-black pb-2'>Personeel</a>
-                <a href='/frontend/pages/resources_addons.php' class='text-gray-600 hover:text-gray-900'>Add-ons</a>
+                <a href='./resources_drones.php' class='text-gray-600 hover:text-gray-900'>Drones</a>
+                <a href='./resources_teams.php' class='text-gray-600 hover:text-gray-900'>Teams</a>
+                <a href='./resources_personeel.php' class='text-black border-b-2 border-black pb-2'>Personeel</a>
+                <a href='./resources_addons.php' class='text-gray-600 hover:text-gray-900'>Add-ons</a>
             </div>
         </div>
 
@@ -31,11 +36,11 @@ $bodyContent = "
                     <h2 class='text-xl font-semibold text-gray-800'>Personeelsleden van {$org}</h2>
                     <div class='flex space-x-4'>
                         <div class='relative'>
-                            <select class='border border-gray-300 rounded-lg px-4 py-2 text-gray-600 focus:outline-none pr-8'>
-                                <option>Filter: Alle rollen</option>
-                                <option>Hoofd piloot</option>
-                                <option>Drone Operator</option>
-                                <option>Developer</option>
+                            <select id='roleFilter' class='border border-gray-300 rounded-lg px-4 py-2 text-gray-600 focus:outline-none pr-8'>
+                                <option value=''>Filter: Alle rollen</option>
+                                <option value='Hoofd piloot'>Hoofd piloot</option>
+                                <option value='Drone Operator'>Drone Operator</option>
+                                <option value='Developer'>Developer</option>
                             </select>
                         </div>
                     </div>
@@ -57,7 +62,7 @@ $bodyContent = "
                                 <td class='p-4 text-gray-600'>Hoofd piloot</td>
                                 <td class='p-4 text-gray-600'>ROC Light UAS</td>
                                 <td class='p-4 text-gray-600'>2025-03-01</td>
-                                <td class='p-4 text-gray-400'>Alleen-lezen</td>
+                                <td class='p-4 text-gray-300'>Alleen lezen</td>
                             </tr>
                             <!-- Extra rijen kunnen hier worden toegevoegd -->
                         </tbody>
@@ -68,7 +73,7 @@ $bodyContent = "
     </div>
 ";
 
-// Include header en template
+// Inclusie van header en template
 require_once __DIR__ . '/components/header.php';
 require_once __DIR__ . '/template.php';
 ?>

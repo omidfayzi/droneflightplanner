@@ -1,21 +1,24 @@
 <?php
-session_start();
+// Start sessie veilig
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 require_once __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../backend/functions/functions.php'; 
 
-// Sla de gegevens van stap 3 op in de sessie (indien van toepassing)
+// Sla gegevens van stap 3 op in de sessie
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Hier kan logica worden toegevoegd om gegevens van stap 3 op te slaan, zoals vergunningen en documenten
-    // Voor dit voorbeeld gaan we ervan uit dat de gegevens al zijn verwerkt
+    $_SESSION['step3_data'] = $_POST; // Voorbeeld: sla alle POST-data op
 }
 
 // Stel variabelen in voor template.php
 $showHeader = 1;
-$userName = $_SESSION['user']['first_name'] ?? 'Onbekend'; // Haal de voornaam uit de sessie
-$org = isset($organisation) ? $organisation : 'Organisatie A'; // Dynamisch uit config.php, fallback naar Organisatie A
-$headTitle = "Afronden"; // Paginatitel
-$gobackUrl = 0; // Geen terug-knop
-$rightAttributes = 0; // Geen logout-knop, wel notificatie en profiel
+$userName = $_SESSION['user']['first_name'] ?? 'Onbekend';
+$org = isset($organisation) ? $organisation : 'Organisatie A';
+$headTitle = "Afronden";
+$gobackUrl = 0;
+$rightAttributes = 0;
 
 // Body content voor Vluchtplanning Stap 4
 $bodyContent = "
