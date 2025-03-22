@@ -1,13 +1,12 @@
 <?php
-// Start sessie veilig
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+// /var/www/public/frontend/pages/flight-planning/step4.php
+// Vluchtplanning Stap 4
 
-require_once __DIR__ . '/../../config/config.php';
-require_once __DIR__ . '/../../backend/functions/functions.php'; 
+session_start();
+require_once __DIR__ . '/../../../config/config.php';
+require_once __DIR__ . '/../../../functions.php';
 
-// Sla gegevens van stap 3 op in de sessie
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $_SESSION['step3_data'] = $_POST; // Voorbeeld: sla alle POST-data op
 }
@@ -45,10 +44,10 @@ $bodyContent = "
                 </div>
                 <h2 class='text-xl font-bold mb-4 text-gray-800'>Vluchtplanning succesvol ingediend, wachtend op akkoord van het UTM.</h2>
                 <div class='flex justify-center space-x-4 mt-6'>
-                    <a href='/frontend/pages/flight-planning-details.php' class='bg-black text-white px-6 py-3 rounded-full hover:bg-gray-800 transition-colors'>
+                    <a href='/app/views/flight-planning-details.php' class='bg-black text-white px-6 py-3 rounded-full hover:bg-gray-800 transition-colors'>
                         Details bekijken
                     </a>
-                    <a href='/frontend/pages/dashboard.php' class='bg-gray-200 text-gray-700 px-6 py-3 rounded-full hover:bg-gray-300 transition-colors'>
+                    <a href='/app/views/dashboard.php' class='bg-gray-200 text-gray-700 px-6 py-3 rounded-full hover:bg-gray-300 transition-colors'>
                         Sluiten
                     </a>
                 </div>
@@ -57,6 +56,6 @@ $bodyContent = "
     </div>
 ";
 
-require_once __DIR__ . '/components/header.php'; 
-require_once __DIR__ . '/template.php';
+require_once __DIR__ . '/../../components/header.php';
+require_once __DIR__ . '/../layouts/template.php';
 ?>

@@ -10,7 +10,7 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once __DIR__ . '/../../config/config.php';
 
 // Laad backend-functies expliciet
-require_once __DIR__ . '/../../backend/functions/functions.php';
+require_once __DIR__ . '/../../functions.php';
 
 // Roep de login-functie aan
 login();
@@ -45,7 +45,7 @@ $bodyContent = "
 ";
 
 // Inclusie van template.php voor de volledige lay-out
-require_once __DIR__ . '/template.php'; // Aangepast pad
+require_once __DIR__ . '/layouts/template.php'; // Aangepast pad
 ?>
 
 <script>

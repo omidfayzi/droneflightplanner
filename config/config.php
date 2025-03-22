@@ -2,6 +2,9 @@
 // /var/www/public/config/config.php
 // Configuratiebestand voor de Drone Vluchtvoorbereidingssysteem applicatie
 
+// config/config.php
+define('API_BASE_URL', 'https://api2.droneflightplanner.nl');
+
 // Start de sessie alleen als deze nog niet actief is
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -73,6 +76,6 @@ return [
         </div>',
     ],
     'paths' => [
-        'assets' => __DIR__ . '/frontend/assets/',
+        'assets' => __DIR__ . '/app/assets/',
     ],
 ];

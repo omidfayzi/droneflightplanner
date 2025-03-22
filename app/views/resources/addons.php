@@ -5,8 +5,8 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // Laad benodigde bestanden
-require_once __DIR__ . '/../../config/config.php';
-require_once __DIR__ . '/../../backend/functions/functions.php';
+require_once __DIR__ . '/../../../config/config.php';
+require_once __DIR__ . '/../../../functions.php'; 
 
 // Stel variabelen in voor template.php
 $showHeader = 1;
@@ -22,10 +22,10 @@ $bodyContent = "
         <!-- Navigatie en Actieknop -->
         <div class='p-8 bg-white flex justify-between items-center border-b border-gray-200'>
             <div class='flex space-x-4 text-sm font-medium'>
-                <a href='./resources_drones.php' class='text-gray-600 hover:text-gray-900'>Drones</a>
-                <a href='./resources_teams.php' class='text-gray-600 hover:text-gray-900'>Teams</a>
-                <a href='./resources_personeel.php' class='text-black'>Personeel</a>
-                <a href='./resources_addons.php' class='text-gray-600 hover:text-gray-900 border-b-2 border-black pb-2'>Add-ons</a>
+                <a href='drones.php' class='text-gray-600 hover:text-gray-900'>Drones</a>
+                <a href='teams.php' class='text-gray-600 hover:text-gray-900'>Teams</a>
+                <a href='personeel.php' class='text-black'>Personeel</a>
+                <a href='addons.php' class='text-gray-600 hover:text-gray-900 border-b-2 border-black pb-2'>Add-ons</a>
             </div>
             <button class='bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors'>
                 + Nieuw item
@@ -57,8 +57,8 @@ $bodyContent = "
                                 <td class='p-4'>
                                     <span class='bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium'>Actief</span>
                                 </td>
-                                <td class='p-4 text-right'>
-                                    <a href='edit.php?id=1' class='text-gray-600 hover:text-gray-800 transition mr-2'>
+                                <td class='p-4 text-gray-600'>
+                                <a href='edit.php?id=1' class='text-gray-600 hover:text-gray-800 transition mr-2'>
                                         <i class='fa-solid fa-pencil'></i>
                                     </a>
                                     <a href='delete.php?id=1' class='text-red-600 hover:text-red-800 transition'>
@@ -73,13 +73,11 @@ $bodyContent = "
                                 <td class='p-4'>
                                     <span class='bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium'>Nieuw</span>
                                 </td>
-                                <td class='p-4 text-right'>
-                                    <a href='edit.php?id=2' class='text-gray-600 hover:text-gray-800 transition mr-2'>
-                                        <i class='fa-solid fa-pencil'></i>
-                                    </a>
-                                    <a href='delete.php?id=2' class='text-red-600 hover:text-red-800 transition'>
-                                        <i class='fa-solid fa-trash'></i>
-                                    </a>
+                                                                <td class='p-4'>
+                                    <span class='text-sm font-medium'>
+                                           <a href='edit.php?id=2' class='text-gray-600 hover:text-gray-800 transition mr-2'><i class='fa-solid fa-pencil'></i></a>
+                                    <a href='delete.php?id=2' class='text-red-600 hover:text-red-800 transition'><i class='fa-solid fa-trash'></i></a>
+                                    </span>
                                 </td>
                             </tr>
                             <!-- Voeg meer rijen toe met dynamische ID's -->
@@ -92,6 +90,6 @@ $bodyContent = "
 ";
 
 // Inclusie van header en template
-require_once __DIR__ . '/components/header.php';
-require_once __DIR__ . '/template.php';
+require_once __DIR__ . '/../../components/header.php';
+require_once __DIR__ . '/../layouts/template.php';
 ?>

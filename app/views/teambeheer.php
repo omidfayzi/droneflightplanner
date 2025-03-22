@@ -1,7 +1,9 @@
 <?php
 session_start();
+
+// Laad benodigde bestanden
 require_once __DIR__ . '/../../config/config.php';
-require_once __DIR__ . '/../../backend/functions/functions.php'; 
+require_once __DIR__ . '/../../functions.php'; 
 
 // Variabelen voor template.php
 $showHeader = 1;
@@ -116,6 +118,6 @@ $bodyContent = "
 ";
 
 // Include header en template
-require_once __DIR__ . '/components/header.php';
-require_once __DIR__ . '/template.php';
+require_once '../components/header.php';
+require_once __DIR__ . '/layouts/template.php';
 ?>

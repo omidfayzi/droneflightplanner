@@ -1,5 +1,5 @@
 <?php
-    include '../functions/functions.php';
+    include '../functions.php';
     login();
 
     $user = $_SESSION["user"];

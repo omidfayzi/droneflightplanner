@@ -5,8 +5,8 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // Laad benodigde bestanden
-require_once __DIR__ . '/../../config/config.php';
-require_once __DIR__ . '/../../backend/functions/functions.php';
+require_once __DIR__ . '/../../../config/config.php';
+require_once __DIR__ . '/../../../functions.php'; 
 
 // Stel variabelen in voor template.php
 $showHeader = 1;
@@ -22,10 +22,10 @@ $bodyContent = "
         <!-- Navigatie -->
         <div class='p-8 bg-white flex justify-between items-center border-b border-gray-200'>
             <div class='flex space-x-4 text-sm font-medium'>
-                <a href='./resources_drones.php' class='text-gray-600 hover:text-gray-900'>Drones</a>
-                <a href='./resources_teams.php' class='text-black border-b-2 border-black pb-2'>Teams</a>
-                <a href='./resources_personeel.php' class='text-gray-600 hover:text-gray-900'>Personeel</a>
-                <a href='./resources_addons.php' class='text-gray-600 hover:text-gray-900'>Add-ons</a>
+                <a href='drones.php' class='text-gray-600 hover:text-gray-900'>Drones</a>
+                <a href='teams.php' class='text-black border-b-2 border-black pb-2'>Teams</a>
+                <a href='personeel.php' class='text-gray-600 hover:text-gray-900'>Personeel</a>
+                <a href='addons.php' class='text-gray-600 hover:text-gray-900'>Add-ons</a>
             </div>
         </div>
 
@@ -84,6 +84,6 @@ $bodyContent = "
 ";
 
 // Include header en template
-require_once __DIR__ . '/components/header.php';
-require_once __DIR__ . '/template.php';
+require_once __DIR__ . '/../../components/header.php';
+require_once __DIR__ . '/../layouts/template.php';
 ?>

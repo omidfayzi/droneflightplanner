@@ -2,11 +2,9 @@
 // /var/www/public/frontend/pages/dashboard.php
 // Dashboard-pagina voor het Drone Vluchtvoorbereidingssysteem
 
-// Laad de configuratie met relatief pad
+// Laad benodigde bestanden
 require_once __DIR__ . '/../../config/config.php';
-
-// Laad backend-functies met relatief pad
-require_once __DIR__ . '/../../backend/functions/functions.php'; 
+require_once __DIR__ . '/../../functions.php'; 
 
 // Stel pagina-specifieke variabelen in
 $headTitle = "Dashboard";
@@ -145,5 +143,5 @@ $bodyContent = "
 ";
 
 // Inclusie van header-component en template.php met relatieve paden
-require_once __DIR__ . '/components/header.php'; 
-require_once __DIR__ . '/template.php';
+require_once '../components/header.php';
+require_once __DIR__ . '/layouts/template.php';

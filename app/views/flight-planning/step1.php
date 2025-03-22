@@ -1,10 +1,10 @@
 <?php
-// /var/www/public/frontend/pages/flight-planning-step1.php
+// /var/www/public/frontend/pages/flight-planning/step1.php
 // Vluchtplanning Stap 1
 
 session_start();
-require_once __DIR__ . '/../../config/config.php';
-require_once __DIR__ . '/../../backend/functions/functions.php'; 
+require_once __DIR__ . '/../../../config/config.php';
+require_once __DIR__ . '/../../../functions.php';
 
 // Stel variabelen in voor template.php
 $showHeader = 1;
@@ -33,7 +33,7 @@ $bodyContent = "
         <!-- Content -->
         <div class='p-6 overflow-y-auto max-h-[calc(90vh-200px)]'>
             <h2 class='text-xl font-bold mb-4 text-gray-800'>Basisgegevens</h2>
-            <form action='flight-planning-step2.php' method='post' class='space-y-6'>
+            <form action='step2.php' method='post' class='space-y-6'>
                 <div>
                     <label class='block text-sm font-medium text-gray-700 mb-1'>Vluchttype</label>
                     <select name='flight_type' class='w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500' required>
@@ -60,6 +60,6 @@ $bodyContent = "
     </div>
 ";
 
-require_once __DIR__ . '/components/header.php'; 
-require_once __DIR__ . '/template.php';
+require_once __DIR__ . '/../../components/header.php';
+require_once __DIR__ . '/../layouts/template.php';
 ?>

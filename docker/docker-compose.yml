@@ -1,0 +1,12 @@
+version: "3"
+services:
+  app:
+    container_name: flightplannerphp
+    restart: unless-stopped
+    build:
+      context: .
+    volumes:
+      - ./src:/var/www/public
+      - ./env:/var/www/env
+    ports:
+      - "4039:80"

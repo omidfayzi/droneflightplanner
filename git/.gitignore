@@ -1,0 +1,13 @@
+# Node.js en PHP dependencies
+node_modules/
+vendor/
+
+# Logs en systeembestanden
+*.log
+.DS_Store
+.vscode/
+.idea/
+
+# Omgevingsvariabelen
+.env
+

@@ -1,5 +1,5 @@
 <?php
-// /var/www/public/frontend/pages/components/nav.php
+// /var/www/public/app/views/components/nav.php
 // Navigatiecomponent voor het Drone Vluchtvoorbereidingssysteem
 
 // Globale variabelen
@@ -7,11 +7,11 @@ global $config, $userName, $org;
 
 // Menu-items
 $menuItems = [
-    ['url' => '/frontend/pages/dashboard.php', 'icon' => 'fa-chart-line', 'text' => 'Dashboard'],
-    ['url' => '/frontend/pages/flight-planning-step1.php', 'icon' => 'fa-map-marked-alt', 'text' => 'Vluchtplanning'],
-    ['url' => '/frontend/pages/monitoring.php', 'icon' => 'fa-chart-bar', 'text' => 'Monitoring'],
-    ['url' => '/frontend/pages/resources_drones.php', 'icon' => 'fa-folder-open', 'text' => 'Resources'],
-    ['url' => '/frontend/pages/teams.php', 'icon' => 'fa-users-cog', 'text' => 'Teambeheer']
+    ['url' => '/app/views/dashboard.php', 'icon' => 'fa-chart-line', 'text' => 'Dashboard'],
+    ['url' => '/app/views/flight-planning/step1.php', 'icon' => 'fa-map-marked-alt', 'text' => 'Vluchtplanning'],
+    ['url' => '/app/views/monitoring.php', 'icon' => 'fa-chart-bar', 'text' => 'Monitoring'],
+    ['url' => '/app/views/resources/drones.php', 'icon' => 'fa-folder-open', 'text' => 'Resources'],
+    ['url' => '/app/views/teambeheer.php', 'icon' => 'fa-users-cog', 'text' => 'Teambeheer']
 ];
 ?>
 

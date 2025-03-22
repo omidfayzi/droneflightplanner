@@ -1,11 +1,10 @@
 <?php
-// Start sessie veilig
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+// /var/www/public/frontend/pages/flight-planning/step3.php
+// Vluchtplanning Stap 3
 
-require_once __DIR__ . '/../../config/config.php';
-require_once __DIR__ . '/../../backend/functions/functions.php'; 
+session_start();
+require_once __DIR__ . '/../../../config/config.php';
+require_once __DIR__ . '/../../../functions.php';
 
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -39,7 +38,7 @@ $bodyContent = "
         <!-- Content -->
         <div class='p-6 overflow-y-auto max-h-[calc(90vh-200px)]'>
             <h2 class='text-xl font-bold mb-4 text-gray-800'>Goedkeuring aanvragen</h2>
-            <form action='flight-planning-step4.php' method='post' class='space-y-6'>
+            <form action='step4.php' method='post' class='space-y-6'>
                 <div class='bg-white rounded-lg shadow-md p-4'>
                     <h3 class='text-lg font-semibold mb-3 text-gray-700'>Vereiste vergunningen</h3>
                     <div class='space-y-3'>
@@ -78,7 +77,6 @@ $bodyContent = "
         </div>
     </div>
 ";
-
-require_once __DIR__ . '/components/header.php'; 
-require_once __DIR__ . '/template.php';
+require_once __DIR__ . '/../../components/header.php';
+require_once __DIR__ . '/../layouts/template.php';
 ?>

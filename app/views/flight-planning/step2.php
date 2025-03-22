@@ -1,7 +1,11 @@
 <?php
+// /var/www/public/frontend/pages/flight-planning/step2.php
+// Vluchtplanning Stap 2
+
 session_start();
-require_once __DIR__ . '/../../config/config.php';
-require_once __DIR__ . '/../../backend/functions/functions.php'; 
+require_once __DIR__ . '/../../../config/config.php';
+require_once __DIR__ . '/../../../functions.php';
+
 
 // Sla de gegevens van stap 1 op in de sessie
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -39,7 +43,7 @@ $bodyContent = "
         <!-- Inhoud -->
         <div class='p-6 overflow-y-auto max-h-[calc(90vh-200px)]'>
             <h2 class='text-xl font-bold mb-4 text-gray-800'>Risicoanalyse</h2>
-            <form action='/frontend/pages/flight-planning-step3.php' method='post' class='space-y-6'>
+            <form action='step3.php' method='post' class='space-y-6'>
                 <div class='bg-gray-200 p-5 rounded-lg mb-4 w-full'>
                     <div class='flex items-center justify-between'>
                         <div class='text-left'>
@@ -63,7 +67,7 @@ $bodyContent = "
                     </div>
                 </div>
                 <div class='flex justify-between items-center'>
-                    <a href='/frontend/pages/flight-planning-step1.php' class='text-gray-500 hover:text-gray-700 flex items-center text-sm px-3 py-2'>
+                    <a href='/app/views/flight-planning-step1.php' class='text-gray-500 hover:text-gray-700 flex items-center text-sm px-3 py-2'>
                         <i class='fa-solid fa-arrow-left mr-2'></i> Vorige stap
                     </a>
                     <button type='submit' class='bg-gray-900 text-white px-6 py-3 rounded-full hover:bg-gray-700 transition-colors flex items-center'>
@@ -75,6 +79,6 @@ $bodyContent = "
     </div>
 ";
 
-require_once __DIR__ . '/components/header.php'; 
-require_once __DIR__ . '/template.php';
+require_once __DIR__ . '/../../components/header.php';
+require_once __DIR__ . '/../layouts/template.php';
 ?>
