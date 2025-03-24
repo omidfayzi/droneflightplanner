@@ -148,7 +148,7 @@ if (is_dir($componentsDir)) {
         <div class="flex flex-col h-full">
             <!-- Logo Section -->
             <div class="w-full p-6 border-b border-gray-700">
-                <a href="/app/pages/dashboard.php" class="block hover:opacity-90 transition-opacity">
+                <a href="/app/views/dashboard.php" class="block hover:opacity-90 transition-opacity">
                     <img src="/app/assets/images/holding_the_drone_logo.png" 
                          alt="Drone Control" 
                          class="h-28 w-auto object-contain mx-auto p-2.5">

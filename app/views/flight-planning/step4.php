@@ -38,11 +38,11 @@ $bodyContent = "
 
         <!-- Content -->
         <div class='p-6 overflow-y-auto max-h-[calc(90vh-200px)] flex flex-col items-center justify-center'>
-            <div class='bg-white rounded-lg shadow-md p-8 text-center'>
-                <div class='w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center mb-4 mx-auto'>
+            <div class='bg-white rounded-lg shadow-md p-8 text-center w-[85vw] h-[80vh] flex flex-col items-center justify-center'>
+                <div class='w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center mb-20 mx-auto'>
                     <i class='fa-solid fa-check text-gray-600'></i>
                 </div>
-                <h2 class='text-xl font-bold mb-4 text-gray-800'>Vluchtplanning succesvol ingediend, wachtend op akkoord van het UTM.</h2>
+                <h2 class='text-xl font-bold mb-16 text-gray-800'>Vluchtplanning succesvol ingediend, wachtend op akkoord van het UTM.</h2>
                 <div class='flex justify-center space-x-4 mt-6'>
                     <a href='/app/views/flight-planning-details.php' class='bg-black text-white px-6 py-3 rounded-full hover:bg-gray-800 transition-colors'>
                         Details bekijken

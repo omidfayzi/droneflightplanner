@@ -65,14 +65,14 @@ $bodyContent = "
                                 <td class='p-4 text-gray-600'>Jan Smit</td>
                                 <td class='p-4 text-gray-600'>3</td>
                                 <td class='p-4 text-gray-600'>Actief</td>
-                                <td class='p-4 text-gray-600'> <a href='./teams.php?team=alpha' class='text-blue-600 hover:text-blue-800'>Teambeheer</a></td>
+                                <td class='p-4 text-gray-600'> <a href='../teambeheer.php?/teambeheer.php?team=alpha' class='text-blue-600 hover:text-blue-800'>Teambeheer</a></td>
                             </tr>
                             <tr class='hover:bg-gray-50 transition'>
                                 <td class='p-4 text-gray-800'>Team Beta</td>
                                 <td class='p-4 text-gray-600'>Eva de Jong</td>
                                 <td class='p-4 text-gray-600'>5</td>
                                 <td class='p-4 text-gray-600'>Inactief</td>
-                                <td class='p-4 text-gray-600'><a href='./teams.php?team=beta' class='text-blue-600 hover:text-blue-800'>Teambeheer</a></td>
+                                <td class='p-4 text-gray-600'><a href='../teambeheer.php?/teambeheer.php?team=beta' class='text-blue-600 hover:text-blue-800'>Teambeheer</a></td>
                             </tr>
                             <!-- Meer dynamische teams hier -->
                         </tbody>
