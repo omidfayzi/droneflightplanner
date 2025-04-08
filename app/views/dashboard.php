@@ -1,5 +1,5 @@
 <?php
-// /var/www/public/frontend/pages/dashboard.php
+// /var/www/public/app/views/dashboard.php
 // Dashboard-pagina voor het Drone Vluchtvoorbereidingssysteem
 
 // Laad benodigde bestanden
@@ -88,7 +88,8 @@ $bodyContent = "
                             <tr>
                                 <th class='p-4 text-left text-gray-600'>Vlucht ID</th>
                                 <th class='p-4 text-left text-gray-600'>Type</th>
-                                <th class='p-4 text-left text-gray-600'>Locatie (coördinaten)</th>
+                                <th class='p-4 text-left text-gray-600'>Datum</th>
+                                <th class='p-4 text-left text-gray-600'>Locatie</th>
                                 <th class='p-4 text-left text-gray-600'>Uitgevoerd door</th>
                                 <th class='p-4 text-left text-gray-600'>Status</th>
                                 <th class='p-4 text-left text-gray-600'></th>
@@ -96,25 +97,29 @@ $bodyContent = "
                         </thead>
                         <tbody class='divide-y divide-gray-200 text-sm'>";
 foreach ($recentFlights as $flight) {
-    $statusClass = match ($flight['DFPSFLI_Status']) {
+    $statusClass = match ($flight['DFPPFLI_Status']) {
         'Afgerond' => 'bg-green-100 text-green-800',
         'Lopend' => 'bg-yellow-100 text-yellow-800',
         'Gepland' => 'bg-blue-100 text-blue-800',
         'Mislukt' => 'bg-red-100 text-red-800',
         default => 'bg-gray-100 text-gray-800'
     };
-    // Combineer latitude en longitude voor weergave (voorlopig NULL)
-    $location = ($flight['DFPSFLI_Latitude'] && $flight['DFPSFLI_Longitude'])
-        ? "Lat: " . htmlspecialchars($flight['DFPSFLI_Latitude']) . ", Long: " . htmlspecialchars($flight['DFPSFLI_Longitude'])
+    // Combineer latitude en longitude voor weergave
+    $location = ($flight['DFPPFLI_Latitude'] && $flight['DFPPFLI_Longitude'])
+        ? "Lat: " . htmlspecialchars($flight['DFPPFLI_Latitude']) . ", Long: " . htmlspecialchars($flight['DFPPFLI_Longitude'])
         : "Onbekend";
+    // Formateer de datum
+    $date = new DateTime($flight['DFPPFLI_entry_Date']);
+    $formattedDate = $date->format('d-m-Y H:i');
     $bodyContent .= "
                                 <tr class='hover:bg-gray-50 transition'>
-                                    <td class='p-4 font-medium text-gray-800'>" . htmlspecialchars($flight['DFPSFLI_Id']) . "</td>
-                                    <td class='p-4 text-gray-600'>" . htmlspecialchars($flight['DFPSFLI_Type']) . "</td>
+                                    <td class='p-4 font-medium text-gray-800'>" . htmlspecialchars($flight['DFPPFLI_Id']) . "</td>
+                                    <td class='p-4 text-gray-600'>" . htmlspecialchars($flight['DFPPFLI_Type']) . "</td>
+                                    <td class='p-4 text-gray-600'>" . htmlspecialchars($formattedDate) . "</td>
                                     <td class='p-4 text-gray-600'>" . $location . "</td>
-                                    <td class='p-4 text-gray-600'>" . htmlspecialchars($flight['DFPSFLI_ExecuteBy']) . "</td>
+                                    <td class='p-4 text-gray-600'>" . htmlspecialchars($flight['DFPPFLI_ExecuteBy']) . "</td>
                                     <td class='p-4'>
-                                        <span class='$statusClass px-3 py-1 rounded-full text-sm font-medium'>" . htmlspecialchars($flight['DFPSFLI_Status']) . "</span>
+                                        <span class='$statusClass px-3 py-1 rounded-full text-sm font-medium'>" . htmlspecialchars($flight['DFPPFLI_Status']) . "</span>
                                     </td>
                                     <td class='p-4 text-right'>
                                         <button class='text-gray-600 hover:text-gray-800 transition'>
