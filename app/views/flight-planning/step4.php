@@ -38,7 +38,7 @@ $bodyContent = "
 
         <!-- Content -->
         <div class='p-6 overflow-y-auto max-h-[calc(90vh-200px)] flex flex-col items-center justify-center'>
-            <div class='bg-white rounded-lg shadow-md p-8 text-center w-[85vw] h-[80vh] flex flex-col items-center justify-center'>
+            <div class='bg-white rounded-lg shadow-md p-8 text-center w-[80vw] h-[80vh] flex flex-col items-center justify-center'>
                 <div class='w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center mb-20 mx-auto'>
                     <i class='fa-solid fa-check text-gray-600'></i>
                 </div>
