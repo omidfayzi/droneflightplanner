@@ -6,7 +6,15 @@ if (session_status() === PHP_SESSION_NONE) {
 
 // Laad benodigde bestanden
 require_once __DIR__ . '/../../../config/config.php';
-require_once __DIR__ . '/../../../functions.php'; 
+require_once __DIR__ . '/../../../functions.php';
+
+// Haal data op van de API
+$apiBaseUrl = "http://devserv01.holdingthedrones.com:4539";
+$dronesUrl = "$apiBaseUrl/resources/drones";
+
+// Probeer de drone-data op te halen
+$dronesResponse = file_get_contents($dronesUrl);
+$drones = $dronesResponse ? json_decode($dronesResponse, true) : [];
 
 // Stel variabelen in voor template.php
 $showHeader = 1;
@@ -16,10 +24,9 @@ $headTitle = "Drones";
 $gobackUrl = 0;
 $rightAttributes = 0;
 
-// Body content voor Resources - Drones
+// Body content met dynamische data
 $bodyContent = "
     <div class='h-[83.5vh] bg-gray-100 shadow-md rounded-tl-xl w-13/15'>
-
         <!-- Navigatie en Actieknop -->
         <div class='p-8 bg-white flex justify-between items-center border-b border-gray-200'>
             <div class='flex space-x-4 text-sm font-medium'>
@@ -59,58 +66,43 @@ $bodyContent = "
                                 <th class='p-4 text-left text-gray-600 font-medium'>Acties</th>
                             </tr>
                         </thead>
-                        <tbody class='divide-y divide-gray-200 text-sm'>
+                        <tbody class='divide-y divide-gray-200 text-sm'>";
+
+// Loop door de drones om tabelrijen dynamisch te genereren
+foreach ($drones as $drone) {
+    // Formateer datums naar d-m-Y
+    $lastInspection = $drone['DFPPDRO_LastInspection'] ? (new DateTime($drone['DFPPDRO_LastInspection']))->format('d-m-Y') : 'N/A';
+    $nextCalibration = $drone['DFPPDRO_NextCalibration'] ? (new DateTime($drone['DFPPDRO_NextCalibration']))->format('d-m-Y') : 'N/A';
+
+    // Bepaal statuskleur
+    $statusClass = match ($drone['DFPPDRO_Status'] ?? 'Onbekend') {
+        'Actief' => 'bg-green-100 text-green-800',
+        'Onderhoud' => 'bg-yellow-100 text-yellow-800',
+        'Inactief' => 'bg-red-100 text-red-800',
+        default => 'bg-gray-100 text-gray-800'
+    };
+
+    $bodyContent .= "
                             <tr class='hover:bg-gray-50 transition'>
-                                <td class='p-4 text-gray-800'>DJI Matrice 300 RTK</td>
-                                <td class='p-4 text-gray-600'>SN-2345HIJK</td>
-                                <td class='p-4 text-gray-600'>12-03-2024</td>
-                                <td class='p-4 text-gray-600'>12-06-2024</td>
+                                <td class='p-4 text-gray-800'>" . htmlspecialchars($drone['DFPPDRO_Model'] ?? 'N/A') . "</td>
+                                <td class='p-4 text-gray-600'>" . htmlspecialchars($drone['DFPPDRO_SerialNumber'] ?? 'N/A') . "</td>
+                                <td class='p-4 text-gray-600'>" . $lastInspection . "</td>
+                                <td class='p-4 text-gray-600'>" . $nextCalibration . "</td>
                                 <td class='p-4'>
-                                    <span class='bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium'>Actief</span>
-                                </td>       
+                                    <span class='$statusClass px-3 py-1 rounded-full text-sm font-medium'>" . htmlspecialchars($drone['DFPPDRO_Status'] ?? 'Onbekend') . "</span>
+                                </td>
                                 <td class='p-4 text-gray-600'>
-                                    <a href='edit.php?id=1' class='text-gray-600 hover:text-gray-800 transition mr-2'>
+                                    <a href='edit.php?id=" . htmlspecialchars($drone['DFPPDRO_Id'] ?? '') . "' class='text-gray-600 hover:text-gray-800 transition mr-2'>
                                         <i class='fa-solid fa-pencil'></i>
                                     </a>
-                                    <a href='delete.php?id=1' class='text-red-600 hover:text-red-800 transition'>
+                                    <a href='delete.php?id=" . htmlspecialchars($drone['DFPPDRO_Id'] ?? '') . "' class='text-red-600 hover:text-red-800 transition'>
                                         <i class='fa-solid fa-trash'></i>
                                     </a>
                                 </td>
-                            </tr>
-                            <tr class='hover:bg-gray-50 transition'>
-                                <td class='p-4 text-gray-800'>Autel Robotics EVO II</td>
-                                <td class='p-4 text-gray-600'>SN-6798ABCD</td>
-                                <td class='p-4 text-gray-600'>01-04-2024</td>
-                                <td class='p-4 text-gray-600'>01-07-2024</td>
-                                <td class='p-4'>
-                                    <span class='bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium'>Onderhoud</span>
-                                </td>
-                                <td class='p-4 text-gray-600'>
-                                        <a href='edit.php?id=2' class='text-gray-600 hover:text-gray-800 transition mr-2'>
-                                        <i class='fa-solid fa-pencil'></i>
-                                    </a>
-                                    <a href='delete.php?id=2' class='text-red-600 hover:text-red-800 transition'>
-                                        <i class='fa-solid fa-trash'></i>
-                                    </a>
-                                </td>
-                            </tr>
-                            <tr class='hover:bg-gray-50 transition'>
-                                <td class='p-4 text-gray-800'>Parrot Anafi USA</td>
-                                <td class='p-4 text-gray-600'>SN-1123FGH</td>
-                                <td class='p-4 text-gray-600'>15-03-2024</td>
-                                <td class='p-4 text-gray-600'>15-06-2024</td>
-                                <td class='p-4'>
-                                    <span class='bg-pink-100 text-pink-800 px-3 py-1 rounded-full text-sm font-medium'>Inactief</span>
-                                </td>
-                                <td class='p-4 text-gray-600'>
-                                       <a href='edit.php?id=3' class='text-gray-600 hover:text-gray-800 transition mr-2'>
-                                        <i class='fa-solid fa-pencil'></i>
-                                    </a>
-                                    <a href='delete.php?id=3' class='text-red-600 hover:text-red-800 transition'>
-                                        <i class='fa-solid fa-trash'></i>
-                                    </a>
-                                </td>
-                            </tr>
+                            </tr>";
+}
+
+$bodyContent .= "
                         </tbody>
                     </table>
                 </div>
@@ -122,4 +114,3 @@ $bodyContent = "
 // Inclusie van header en template
 require_once __DIR__ . '/../../components/header.php';
 require_once __DIR__ . '/../layouts/template.php';
-?>
