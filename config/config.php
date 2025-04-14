@@ -15,6 +15,7 @@ require_once __DIR__ . '/../vendor/autoload.php';
 
 // Laad omgevingsvariabelen uit .env-bestand
 use Dotenv\Dotenv;
+
 $dotenv = Dotenv::createImmutable('/var/www/env');
 $dotenv->load();
 
@@ -78,4 +79,7 @@ return [
     'paths' => [
         'assets' => __DIR__ . '/app/assets/',
     ],
+    [
+        'api_base_url' => 'http://devserv01.holdingthedrones.com:4539',
+    ]
 ];

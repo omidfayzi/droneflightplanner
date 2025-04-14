@@ -67,4 +67,3 @@ $bodyContent = '
 
 // Inclusie van template.php voor de volledige lay-out
 require_once __DIR__ . '/app/views/layouts/template.php';
-?>

@@ -1,26 +1,29 @@
 <?php
-// Definieer de basis-URL van je API
-define('API_BASE_URL', 'http://api2.droneflightplanner.nl/api2');
 
-// Functie voor GET-verzoeken
-function apiGet($endpoint) {
-    $url = API_BASE_URL . $endpoint;
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    $response = curl_exec($ch);
-    curl_close($ch);
-    return json_decode($response, true); // Zet JSON om naar een PHP-array
-}
+class ApiHelper
+{
+    // Encapsuleer de basis-URL van de API in een private variabel. de URL is alleen beschikbaar binnen de klasse.
+    private $baseUrl;
 
-// Functie voor POST-verzoeken
-function apiPost($endpoint, $data) {
-    $url = API_BASE_URL . $endpoint;
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-    $response = curl_exec($ch);
-    curl_close($ch);
-    return json_decode($response, true); // Zet JSON om naar een PHP-array
+    // Constructor object : krijgt de basis-URL van de API
+    public function __construct($baseUrl)
+    {
+        $this->baseUrl = $baseUrl;
+    }
+
+    // Method om gegevens op te halen van de API
+    public function fetchData($endpoint)
+    {
+        $url = $this->baseUrl . $endpoint;
+        // Zet gegevens om in een JSON-string formaat
+        $response = file_get_contents($url);
+
+        // Checken of het ophalen van gegevens gelukt is
+        if ($response === false) {
+            throw new Exception("Error fetching data from API");
+        }
+
+        // Return JSON-decoded response in associative array format
+        return json_decode($response, true);
+    }
 }
