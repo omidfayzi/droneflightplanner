@@ -6,7 +6,15 @@ if (session_status() === PHP_SESSION_NONE) {
 
 // Laad benodigde bestanden
 require_once __DIR__ . '/../../../config/config.php';
-require_once __DIR__ . '/../../../functions.php'; 
+require_once __DIR__ . '/../../../functions.php';
+
+// Haal data op van de API
+$apiBaseUrl = "http://devserv01.holdingthedrones.com:4539";
+$usersUrl = "$apiBaseUrl/resources/users";
+
+// Probeer de personeelsgegevens op te halen
+$usersResponse = file_get_contents($usersUrl);
+$users = $usersResponse ? json_decode($usersResponse, true) : [];
 
 // Stel variabelen in voor template.php
 $showHeader = 1;
@@ -16,7 +24,7 @@ $headTitle = "Personeelsbeheer";
 $gobackUrl = 0;
 $rightAttributes = 0;
 
-// Body content
+// Body content met dynamische data
 $bodyContent = "
     <div class='h-[83.5vh] bg-gray-100 shadow-md rounded-tl-xl w-13/15'>
         <!-- Navigatie -->
@@ -56,15 +64,27 @@ $bodyContent = "
                                 <th class='p-4 text-left text-gray-600 font-medium'>Acties</th>
                             </tr>
                         </thead>
-                        <tbody class='divide-y divide-gray-200 text-sm'>
+                        <tbody class='divide-y divide-gray-200 text-sm'>";
+
+// Loop door de personeelsgegevens om tabelrijen dynamisch te genereren
+foreach ($users as $user) {
+    // Combineer voor- en achternaam
+    $fullName = htmlspecialchars($user['DFPPUSR_FirstName'] ?? '') . ' ' . htmlspecialchars($user['DFPPUSR_LastName'] ?? '');
+
+    // Formateer de 'Sinds' datum naar d-m-Y
+    $sinceDate = $user['DFPPUSR_Since'] ? (new DateTime($user['DFPPUSR_Since']))->format('d-m-Y') : 'N/A';
+
+    $bodyContent .= "
                             <tr class='hover:bg-gray-50 transition'>
-                                <td class='p-4 text-gray-800'>Jan Smit</td>
-                                <td class='p-4 text-gray-600'>Hoofd piloot</td>
-                                <td class='p-4 text-gray-600'>ROC Light UAS</td>
-                                <td class='p-4 text-gray-600'>2025-03-01</td>
+                                <td class='p-4 text-gray-800'>$fullName</td>
+                                <td class='p-4 text-gray-600'>" . htmlspecialchars($user['DFPPUSR_Role'] ?? 'N/A') . "</td>
+                                <td class='p-4 text-gray-600'>" . htmlspecialchars($user['DFPPUSR_License'] ?? 'N/A') . "</td>
+                                <td class='p-4 text-gray-600'>$sinceDate</td>
                                 <td class='p-4 text-gray-300'>Alleen lezen</td>
-                            </tr>
-                            <!-- Extra rijen kunnen hier worden toegevoegd -->
+                            </tr>";
+}
+
+$bodyContent .= "
                         </tbody>
                     </table>
                 </div>
@@ -76,4 +96,3 @@ $bodyContent = "
 // Inclusie van header en template
 require_once __DIR__ . '/../../components/header.php';
 require_once __DIR__ . '/../layouts/template.php';
-?>
