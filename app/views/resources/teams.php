@@ -6,7 +6,15 @@ if (session_status() === PHP_SESSION_NONE) {
 
 // Laad benodigde bestanden
 require_once __DIR__ . '/../../../config/config.php';
-require_once __DIR__ . '/../../../functions.php'; 
+require_once __DIR__ . '/../../../functions.php';
+
+// Haal data op van de API
+$apiBaseUrl = "http://devserv01.holdingthedrones.com:4539";
+$teamsUrl = "$apiBaseUrl/resources/teams";
+
+// Probeer de teamgegevens op te halen
+$teamsResponse = file_get_contents($teamsUrl);
+$teams = $teamsResponse ? json_decode($teamsResponse, true) : [];
 
 // Stel variabelen in voor template.php
 $showHeader = 1;
@@ -16,7 +24,7 @@ $headTitle = "Teams Overzicht";
 $gobackUrl = 0; // Geen terug-knop
 $rightAttributes = 0; // Standaard header-attributen
 
-// Body content
+// Body content met dynamische data
 $bodyContent = "
     <div class='h-[83.5vh] bg-gray-100 shadow-md rounded-tl-xl w-13/15'>
         <!-- Navigatie -->
@@ -59,22 +67,25 @@ $bodyContent = "
                                 <th class='p-4 text-left text-gray-600 font-medium'>Acties</th>
                             </tr>
                         </thead>
-                        <tbody class='divide-y divide-gray-200 text-sm'>
+                        <tbody class='divide-y divide-gray-200 text-sm'>";
+
+// Loop door de teams om tabelrijen dynamisch te genereren
+foreach ($teams as $team) {
+    $memberCount = $team['memberCount'] ?? 'N/A'; // Aantal leden, aan te passen aan API-veld
+
+    $bodyContent .= "
                             <tr class='hover:bg-gray-50 transition'>
-                                <td class='p-4 text-gray-800'>Team Alpha</td>
-                                <td class='p-4 text-gray-600'>Jan Smit</td>
-                                <td class='p-4 text-gray-600'>3</td>
-                                <td class='p-4 text-gray-600'>Actief</td>
-                                <td class='p-4 text-gray-600'> <a href='../teambeheer.php?/teambeheer.php?team=alpha' class='text-blue-600 hover:text-blue-800'>Teambeheer</a></td>
-                            </tr>
-                            <tr class='hover:bg-gray-50 transition'>
-                                <td class='p-4 text-gray-800'>Team Beta</td>
-                                <td class='p-4 text-gray-600'>Eva de Jong</td>
-                                <td class='p-4 text-gray-600'>5</td>
-                                <td class='p-4 text-gray-600'>Inactief</td>
-                                <td class='p-4 text-gray-600'><a href='../teambeheer.php?/teambeheer.php?team=beta' class='text-blue-600 hover:text-blue-800'>Teambeheer</a></td>
-                            </tr>
-                            <!-- Meer dynamische teams hier -->
+                                <td class='p-4 text-gray-800'>" . htmlspecialchars($team['DFPPSTM_Name'] ?? 'N/A') . "</td>
+                                <td class='p-4 text-gray-600'>" . htmlspecialchars($team['DFPPSTM_LeaderName'] ?? 'N/A') . "</td>
+                                <td class='p-4 text-gray-600'>$memberCount</td>
+                                <td class='p-4 text-gray-600'>" . htmlspecialchars($team['DFPPSTM_Status'] ?? 'Onbekend') . "</td>
+                                <td class='p-4 text-gray-600'>
+                                    <a href='../teambeheer.php?team=" . htmlspecialchars($team['DFPPSTM_Id'] ?? '') . "' class='text-blue-600 hover:text-blue-800'>Teambeheer</a>
+                                </td>
+                            </tr>";
+}
+
+$bodyContent .= "
                         </tbody>
                     </table>
                 </div>
@@ -86,4 +97,3 @@ $bodyContent = "
 // Include header en template
 require_once __DIR__ . '/../../components/header.php';
 require_once __DIR__ . '/../layouts/template.php';
-?>
