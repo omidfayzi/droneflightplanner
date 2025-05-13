@@ -11,17 +11,17 @@ $menuItems = [
     ['url' => '/app/views/flight-planning/step1.php', 'icon' => 'fa-map-marked-alt', 'text' => 'Vluchtplanning'],
     ['url' => '/app/views/monitoring.php', 'icon' => 'fa-chart-bar', 'text' => 'Monitoring'],
     ['url' => '/app/views/resources/drones.php', 'icon' => 'fa-folder-open', 'text' => 'Resources'],
-    ['url' => '/app/views/teambeheer.php', 'icon' => 'fa-users-cog', 'text' => 'Teambeheer']
+    ['url' => '/app/views/teamManagement.php', 'icon' => 'fa-users-cog', 'text' => 'Teambeheer']
 ];
 ?>
 
 <nav class="flex-1 flex flex-col px-4 py-6 space-y-2">
     <?php foreach ($menuItems as $item): ?>
-        <?php 
-            $isActive = $_SERVER['REQUEST_URI'] === $item['url'] ? 'active-menu' : 'text-gray-300 hover:bg-gray-700/50';
+        <?php
+        $isActive = $_SERVER['REQUEST_URI'] === $item['url'] ? 'active-menu' : 'text-gray-300 hover:bg-gray-700/50';
         ?>
-        <a href="<?php echo htmlspecialchars($item['url']); ?>" 
-           class="w-full flex items-center space-x-4 p-4 rounded-lg transition-colors duration-300 <?php echo $isActive; ?>">
+        <a href="<?php echo htmlspecialchars($item['url']); ?>"
+            class="w-full flex items-center space-x-4 p-4 rounded-lg transition-colors duration-300 <?php echo $isActive; ?>">
             <i class="fa-solid <?php echo $item['icon']; ?> ml-8 text-xl w-6 text-center"></i>
             <span class="text-base font-medium"><?php echo htmlspecialchars($item['text']); ?></span>
         </a>

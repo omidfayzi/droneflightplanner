@@ -8,7 +8,7 @@ require_once __DIR__ . '/../../../functions.php';
 
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $_SESSION['step2_data'] = $_POST; // Voorbeeld: sla alle POST-data op
+  $_SESSION['step2_data'] = $_POST; // Voorbeeld: sla alle POST-data op
 }
 
 // Stel variabelen in voor template.php
@@ -79,4 +79,3 @@ $bodyContent = "
 ";
 require_once __DIR__ . '/../../components/header.php';
 require_once __DIR__ . '/../layouts/template.php';
-?>

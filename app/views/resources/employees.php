@@ -10,7 +10,7 @@ require_once __DIR__ . '/../../../functions.php';
 
 // Haal data op van de API
 $apiBaseUrl = "http://devserv01.holdingthedrones.com:4539";
-$usersUrl = "$apiBaseUrl/resources/users";
+$usersUrl = "$apiBaseUrl/employees";
 
 // Probeer de personeelsgegevens op te halen
 $usersResponse = file_get_contents($usersUrl);
@@ -32,7 +32,7 @@ $bodyContent = "
             <div class='flex space-x-4 text-sm font-medium'>
                 <a href='drones.php' class='text-gray-600 hover:text-gray-900'>Drones</a>
                 <a href='teams.php' class='text-gray-600 hover:text-gray-900'>Teams</a>
-                <a href='personeel.php' class='text-black border-b-2 border-black pb-2'>Personeel</a>
+                <a href='employees.php' class='text-black border-b-2 border-black pb-2'>Personeel</a>
                 <a href='addons.php' class='text-gray-600 hover:text-gray-900'>Add-ons</a>
             </div>
         </div>

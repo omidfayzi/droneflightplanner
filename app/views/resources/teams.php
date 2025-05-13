@@ -10,7 +10,7 @@ require_once __DIR__ . '/../../../functions.php';
 
 // Haal data op van de API
 $apiBaseUrl = "http://devserv01.holdingthedrones.com:4539";
-$teamsUrl = "$apiBaseUrl/resources/teams";
+$teamsUrl = "$apiBaseUrl/teams";
 
 // Probeer de teamgegevens op te halen
 $teamsResponse = file_get_contents($teamsUrl);
@@ -31,8 +31,8 @@ $bodyContent = "
         <div class='p-8 bg-white flex justify-between items-center border-b border-gray-200'>
             <div class='flex space-x-4 text-sm font-medium'>
                 <a href='drones.php' class='text-gray-600 hover:text-gray-900'>Drones</a>
-                <a href='teams.php' class='text-black border-b-2 border-black pb-2'>Teams</a>
-                <a href='personeel.php' class='text-gray-600 hover:text-gray-900'>Personeel</a>
+                <a href='teamManagement.php' class='text-black border-b-2 border-black pb-2'>Teams</a>
+                <a href='employees.php' class='text-gray-600 hover:text-gray-900'>Personeel</a>
                 <a href='addons.php' class='text-gray-600 hover:text-gray-900'>Add-ons</a>
             </div>
         </div>
@@ -76,11 +76,11 @@ foreach ($teams as $team) {
     $bodyContent .= "
                             <tr class='hover:bg-gray-50 transition'>
                                 <td class='p-4 text-gray-800'>" . htmlspecialchars($team['DFPPSTM_Name'] ?? 'N/A') . "</td>
-                                <td class='p-4 text-gray-600'>" . htmlspecialchars($team['DFPPSTM_LeaderName'] ?? 'N/A') . "</td>
+                                <td class='p-4 text-gray-600'>" . htmlspecialchars($team['DFPPSTM_LeaderId'] ?? 'N/A') . "</td>
                                 <td class='p-4 text-gray-600'>$memberCount</td>
                                 <td class='p-4 text-gray-600'>" . htmlspecialchars($team['DFPPSTM_Status'] ?? 'Onbekend') . "</td>
                                 <td class='p-4 text-gray-600'>
-                                    <a href='../teambeheer.php?team=" . htmlspecialchars($team['DFPPSTM_Id'] ?? '') . "' class='text-blue-600 hover:text-blue-800'>Teambeheer</a>
+                                    <a href='../employees.php?team=" . htmlspecialchars($team['DFPPSTM_Id'] ?? '') . "' class='text-blue-600 hover:text-blue-800'>Teambeheer</a>
                                 </td>
                             </tr>";
 }

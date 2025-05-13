@@ -10,7 +10,7 @@ require_once __DIR__ . '/../../../functions.php';
 
 // Haal data op van de API
 $apiBaseUrl = "http://devserv01.holdingthedrones.com:4539";
-$dronesUrl = "$apiBaseUrl/resources/drones";
+$dronesUrl = "$apiBaseUrl/drones";
 
 // Probeer de drone-data op te halen
 $dronesResponse = file_get_contents($dronesUrl);
@@ -32,7 +32,7 @@ $bodyContent = "
             <div class='flex space-x-4 text-sm font-medium'>
                 <a href='drones.php' class='text-gray-600 hover:text-gray-900 border-b-2 border-black pb-2'>Drones</a>
                 <a href='teams.php' class='text-gray-600 hover:text-gray-900'>Teams</a>
-                <a href='personeel.php' class='text-gray-600 hover:text-gray-900'>Personeel</a>
+                <a href='employees.php' class='text-gray-600 hover:text-gray-900'>Personeel</a>
                 <a href='addons.php' class='text-gray-600 hover:text-gray-900'>Add-ons</a>
             </div>
             <button class='bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors'>
@@ -94,9 +94,6 @@ foreach ($drones as $drone) {
                                 <td class='p-4 text-gray-600'>
                                     <a href='edit.php?id=" . htmlspecialchars($drone['DFPPDRO_Id'] ?? '') . "' class='text-gray-600 hover:text-gray-800 transition mr-2'>
                                         <i class='fa-solid fa-pencil'></i>
-                                    </a>
-                                    <a href='delete.php?id=" . htmlspecialchars($drone['DFPPDRO_Id'] ?? '') . "' class='text-red-600 hover:text-red-800 transition'>
-                                        <i class='fa-solid fa-trash'></i>
                                     </a>
                                 </td>
                             </tr>";
