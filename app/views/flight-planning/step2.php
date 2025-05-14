@@ -9,10 +9,10 @@ require_once __DIR__ . '/../../../functions.php';
 
 // Sla de gegevens van stap 1 op in de sessie
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-  $_SESSION['flight_planning']['flight_type'] = $_POST['flight_type'] ?? '';
-  $_SESSION['flight_planning']['start_location'] = $_POST['start_location'] ?? '';
-  $_SESSION['flight_planning']['destination'] = $_POST['destination'] ?? '';
-  $_SESSION['flight_planning']['flight_datetime'] = $_POST['flight_datetime'] ?? '';
+    $_SESSION['flight_planning']['flight_type'] = $_POST['flight_type'] ?? '';
+    $_SESSION['flight_planning']['start_location'] = $_POST['start_location'] ?? '';
+    $_SESSION['flight_planning']['destination'] = $_POST['destination'] ?? '';
+    $_SESSION['flight_planning']['flight_datetime'] = $_POST['flight_datetime'] ?? '';
 }
 
 // Stel variabelen in voor template.php

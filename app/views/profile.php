@@ -1,268 +1,153 @@
 <?php
-include '../functions.php';
+// src/app/views/profile.php
+
+// Include core functions
+include __DIR__ . '/../../functions.php';
 login();
 
-$user = $_SESSION["user"];
-// Define the user name
-$userName = $user['first_name'];
-//define if you want to iclude the componment setPrefName
-$includeSetPrefName = 0;
-//select the right attributes for the page
-//define if you want to iclude the componment setPlotName
-$includeSetPlotName = 0;
-//define if you want to iclude the the componkent include check
-$includeCheckWithIdin = 0;
-// define the go back url
-$gobackUrl = 1;
-// Define the title of the head
-$headTitle = fetchPropPrefTxt(19);
-// Define if the head should be shown or not
-$showHeader = 1;
+// Retrieve current user
+$user = $_SESSION['user'] ?? [];
+$userName = htmlspecialchars($user['first_name'] ?? '', ENT_QUOTES, 'UTF-8');
 
-// this is the body of the webpage
-$bodyContent = "
-    <div id='verification-status' style='background-color:rgba(0, 0, 0, 0.13);' class='bg-black m-4 p-3 min-h-72 rounded-xl'>
-        <h1 class='mb-2 text-white'>iDIN</h1>
-        <div class='flex justify-center'>
-            <div class='justify-center text-center'>
-                <!-- Content will be updated dynamically -->
+// Page configurations
+$headTitle = fetchPropPrefTxt(19) ?: 'Profiel';
+$txt = [
+    'language_select' => fetchPropPrefTxt(22) ?: 'Selecteer taal',
+    'language_nl'     => fetchPropPrefTxt(20) ?: 'Nederlands',
+    'language_en'     => fetchPropPrefTxt(21) ?: 'English',
+    'logout'          => fetchPropPrefTxt(13) ?: 'Uitloggen',
+    'idin_start'      => fetchPropPrefTxt(23) ?: 'Start iDIN',
+    'idin_verify'     => fetchPropPrefTxt(24) ?: 'Verifieer identiteit',
+    'idin_verified'   => fetchPropPrefTxt(10) ?: 'Geverifieerd',
+    'language_saved'  => fetchPropPrefTxt(25) ?: 'Taal opgeslagen',
+];
+?>
+<!DOCTYPE html>
+<html lang="nl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?= htmlspecialchars($headTitle, ENT_QUOTES) ?></title>
+    <!-- Tailwind CSS -->
+    <link href="/css/tailwind.css" rel="stylesheet">
+    <!-- Custom styles/scripts -->
+    <script src="/js/global.js" defer></script>
+</head>
+
+<body class="bg-gray-100">
+
+    <header class="bg-white shadow">
+        <div class="container mx-auto px-4 py-6 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-gray-800"><?= htmlspecialchars($headTitle, ENT_QUOTES) ?></h1>
+            <div class="flex items-center space-x-4">
+                <span class="text-gray-600">Welkom, <?= $userName ?></span>
+                <a href="/logout.php" class="text-red-600 hover:underline"><?= htmlspecialchars($txt['logout'], ENT_QUOTES) ?></a>
             </div>
         </div>
-    </div>
-    <div style='background-color:rgba(0, 0, 0, 0.13);' class='bg-black m-4 p-3 rounded-xl'>
-        <h1 class='mb-2 text-white'>Percelen</h1>
-        <div class='sm:grid-cols-4 grid gap-4'>
-            <select id='languageSelect' class='rounded-xl' style='padding: 10px; background-color: #D9D9D9;'>
-                <option value='disabled selected'>Selecteer een taal</option>
-                <option value='PropPrefTxt_Nl'>" . fetchPropPrefTxt(20) . "</option>
-                <option value='PropPrefTxt_En'>" . fetchPropPrefTxt(21) . "</option>
-            </select>
-            <select id='mySelect' class='rounded-xl' style='padding: 10px; background-color: #D9D9D9;'>
-                <option value='' disabled selected>" . fetchPropPrefTxt(22) . "</option>
-            </select>
-            <a href='./logout.php' style='text-decoration: none;'><div style='background-color: #D9D9D9;' class='overflow-hidden rounded-xl p-4'>" . fetchPropPrefTxt(13) . "</div></a></div>
-    </div>
-    ";
+    </header>
 
-// Include the base template
-include '../includes/header.php';
-?>
-<script>
-    // Automatically call the function on page load
-    //sendStatusRequest()
+    <main class="container mx-auto px-4 py-8">
+        <!-- iDIN Verification Status -->
+        <section id="verification-status" class="bg-white rounded-lg shadow p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-4">iDIN</h2>
+            <div id="idin-container" class="text-center"></div>
+        </section>
 
+        <!-- Percelen Section -->
+        <section class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold mb-4">Percelen</h2>
+            <div class="grid sm:grid-cols-4 gap-4">
+                <select id="languageSelect" class="rounded p-2 border">
+                    <option value="" disabled selected><?= htmlspecialchars($txt['language_select'], ENT_QUOTES) ?></option>
+                    <option value="PropPrefTxt_Nl"><?= htmlspecialchars($txt['language_nl'], ENT_QUOTES) ?></option>
+                    <option value="PropPrefTxt_En"><?= htmlspecialchars($txt['language_en'], ENT_QUOTES) ?></option>
+                </select>
+                <select id="mySelect" class="rounded p-2 border">
+                    <option value="" disabled selected><?= htmlspecialchars($txt['language_select'], ENT_QUOTES) ?></option>
+                </select>
+                <button id="confirmOrgBtn" onclick="confirmOrg()" class="bg-blue-600 text-white px-4 py-2 rounded">Bevestig</button>
+            </div>
+        </section>
+    </main>
 
-    const keycloakId = "<?php echo $user['id'] ?>"; // Replace with the actual ProfPrefKeycloak_id
-    const url = getUsersWithKeycloak + keycloakId;
-    let isVerified2 = 1;
+    <script>
+        // Immediately invoked function scope
+        (async function() {
+            const keycloakId = "<?= addslashes($user['id'] ?? '') ?>";
+            const idinUrl = getUsersWithKeycloak + keycloakId;
+            const idinContainer = document.getElementById('idin-container');
 
-    fetch(url, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        })
-        .then((response) => {
-            if (!response.ok) {
-                throw new Error(`Error fetching users: ${response.statusText}`);
-            }
-            return response.json();
-        })
-        .then((data) => {
-            if (data.users && data.users.length > 0) {
-                // Get the last user from the array
-                const lastUser = data.users[data.users.length - 1];
-                // Extract PropPrefUser_IdinCheck from the last user
-                const propPrefUserIdInCheck = lastUser.PropPrefUser_IdinCheck;
-                if (propPrefUserIdInCheck == 1) {
-                    isVerified2 = 1;
-                } else {
-                    isVerified2 = 0;
+            try {
+                const res = await fetch(idinUrl);
+                if (!res.ok) throw new Error(res.statusText);
+                const data = await res.json();
+                const users = data.users || [];
+                if (users.length) {
+                    const last = users.pop();
+                    const verified = last.PropPrefUser_IdinCheck === 1;
+                    idinContainer.innerHTML = verified ?
+                        `<p class="text-green-600 font-medium mb-4"><?= addslashes($txt['idin_verified']) ?></p><img src="/images/idin-logo.svg" alt="iDIN Logo" class="mx-auto">` :
+                        `<p class="text-yellow-600 font-medium mb-4"><?= addslashes($txt['idin_verify']) ?></p><button onclick="startIdin()" class="bg-blue-600 text-white px-4 py-2 rounded"><?= addslashes($txt['idin_start']) ?></button>`;
                 }
-
-                const container = document.querySelector('#verification-status .justify-center.text-center');
-
-                if (isVerified2 == 0) {
-                    container.innerHTML = `
-                <h1 class='text-white text-lg mb-3'><?php echo fetchPropPrefTxt(24); ?></h1>
-                <img src='/images/idin-logo.svg' alt='Holding the Drones Logo' class='max-w-full max-h-40 object-contain'>
-                <button class='mt-6 px-4 py-2 bg-blue-500 text-white rounded-3xl' onclick='hello()'><?php echo fetchPropPrefTxt(23); ?></button>
-            `;
-                } else {
-                    container.innerHTML = `
-                <h1 class='text-white text-lg mb-3'><?php echo fetchPropPrefTxt(10); ?></h1>
-                <img src='/images/idin-logo.svg' alt='Holding the Drones Logo' class='max-w-full max-h-40 object-contain'>
-            `;
-                }
-                // Handle the users array when at least one user is fetched
-            } else {
-                console.log("No users found for the provided Keycloak ID.");
+            } catch (err) {
+                console.error('iDIN error:', err);
+                idinContainer.textContent = 'Kan status niet laden.';
             }
-        })
-        .catch((error) => {
-            console.error("Error:", error);
-        });
 
-    function hello() {
-        // Example usage
-        (async () => {
-            await processTransactionRequest();
+            window.startIdin = async () => {
+                try {
+                    await processTransactionRequest();
+                } catch (err) {
+                    console.error('Start iDIN falied:', err);
+                }
+            };
+
+            // Language selector
+            const langSelect = document.getElementById('languageSelect');
+            langSelect.addEventListener('change', () => {
+                document.cookie = `language_id=${langSelect.value}; path=/; max-age=${100*365*24*60*60}`;
+                showPopup("<?= addslashes($txt['language_saved']) ?>", 'success');
+            });
+            const savedLang = document.cookie.match(/(?:^|;)\s*language_id=([^;]+)/);
+            if (savedLang) langSelect.value = savedLang[1];
+
+            // Load organizations
+            const orgIds = [];
+            try {
+                const res = await fetch(cors + userOrgDatabaseUser, {
+                    headers: {
+                        'Authorization': `Bearer ${userOrgDatabaseBearerToken}`
+                    }
+                });
+                const list = await res.json();
+                list.filter(o => o.USR_Keycloak_ID === keycloakId).forEach(o => orgIds.push(o.ORG_ID));
+                const res2 = await fetch(cors + userOrgDatabaseOrg, {
+                    headers: {
+                        'Authorization': `Bearer ${userOrgDatabaseBearerToken}`
+                    }
+                });
+                const orgs = await res2.json();
+                const sel = document.getElementById('mySelect');
+                orgs.filter(o => orgIds.includes(o.ORG_ID)).forEach(o => {
+                    const opt = document.createElement('option');
+                    opt.value = o.ORG_ID;
+                    opt.textContent = o.ORG_FullName;
+                    sel.appendChild(opt);
+                });
+            } catch (err) {
+                console.error('Organisaties laden faalde:', err);
+            }
+
+            window.confirmOrg = function() {
+                const sel = document.getElementById('mySelect');
+                if (!sel.value) return;
+                document.cookie = `org_id=${sel.options[sel.selectedIndex].text}; path=/; max-age=${100*365*24*60*60}`;
+                location.href = sel.value === 'gebruiker' ? './usr-dashboard.php' : './org-dashboard.php';
+            };
         })();
-    }
+    </script>
 
-    document.getElementById('languageSelect').addEventListener('change', function() {
-        const selectedLanguage = this.value;
+</body>
 
-        // Set the language cookie with a very long expiration time (100 years)
-        document.cookie = `language_id=${selectedLanguage}; path=/; max-age=${100 * 365 * 24 * 60 * 60};`;
-        showPopup("<?php echo fetchPropPrefTxt(25) ?>", "success");
-    });
-
-    function setSelectedLanguage() {
-        const currentLanguage = getCookie('language_id');
-        if (currentLanguage) {
-            const languageSelect = document.getElementById('languageSelect');
-            languageSelect.value = currentLanguage; // Set the value to match the cookie
-        }
-    }
-
-    setSelectedLanguage();
-
-    const orgArray = [];
-
-    async function fetchAllPrefLists() {
-        try {
-            // Define the proxy URL
-            const proxyUrl = cors;
-
-            // Define the URL of your GET endpoint
-            const url = userOrgDatabaseUser;
-
-            // Use the proxy to forward the request over HTTPS
-            const proxyUrlWithTarget = proxyUrl + url;
-
-            // Replace this with your actual Bearer token
-            const token = userOrgDatabaseBearerToken;
-
-            // Make the fetch request to retrieve all preference lists with Authorization header
-            const response = await fetch(proxyUrlWithTarget, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json' // You may want to include this depending on your API's expectations
-                }
-            });
-
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-
-            // Parse the JSON response
-            const data = await response.json();
-
-            // Handle the response data (all preference lists)
-            console.log('All Preference Lists:', data);
-
-            // Make sure the data is in the correct format
-            if (Array.isArray(data)) {
-                const prefListContainer = document.getElementById("mySelect");
-
-                // Loop through each org
-                data.forEach(org => {
-                    var keycloakId = "<?php echo $user['id'] ?>";
-                    alert(org.USR_Keycloak_ID);
-                    alert("alert" + keycloakId);
-                    if (org.USR_Keycloak_ID === keycloakId) {
-                        alert(org.USR_Keycloak_ID);
-                        // Check if the USR_ID is 1
-                        // Create the option element
-                        //const option = document.createElement('option');
-                        orgArray.push(org.ORG_ID); // Set the Org ID as the value
-
-                        // Example usage of the function
-                    }
-                });
-                fetchOrganisationData();
-            } else {
-                console.error("The response is not an array", data);
-            }
-
-        } catch (error) {
-            console.error('Error fetching all preference lists:', error);
-        }
-    }
-
-    fetchAllPrefLists();
-
-    async function fetchOrganisationData() {
-        // Define the proxy URL
-        const proxyUrl = cors;
-
-        // Define the URL of your GET endpoint
-        const url = userOrgDatabaseOrg; // Your original HTTP URL
-
-        // Use the proxy to forward the request over HTTPS
-        const proxyUrlWithTarget = proxyUrl + url;
-
-        // Define the Bearer token inside the function
-        const token = userOrgDatabaseBearerToken; // Replace with your actual Bearer token
-
-        try {
-            // Fetch data from the API with the Authorization header
-            const response = await fetch(proxyUrlWithTarget, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json' // You may want to include this depending on your API's expectations
-                }
-            });
-
-            // Check if the response is okay
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-
-            // Parse the JSON response
-            const data = await response.json();
-
-            // Handle the response data (all preference lists)
-            console.log('All Preference Lists:', data);
-
-            // Make sure the data is in the correct format
-            if (Array.isArray(data)) {
-                const prefListContainer = document.getElementById("mySelect");
-
-                // Loop through each org
-                data.forEach(org => {
-                    // Check if the org_id matches
-                    if (orgArray.includes(org.ORG_ID)) {
-                        // Create the option element
-                        const option = document.createElement('option');
-                        option.value = org.ORG_ID; // Set the Org ID as the value
-                        option.textContent = org.ORG_FullName; // Display the Full Name of the organization
-                        prefListContainer.appendChild(option);
-                    }
-                });
-            } else {
-                console.error("The response is not an array", data);
-            }
-        } catch (error) {
-            console.error('Error fetching organization data:', error);
-        }
-    }
-
-    function confirmOrg() {
-        // Get the select element by its ID
-        const selectBox = document.getElementById("mySelect");
-
-        if (selectBox.value === "gebruiker") {
-            window.location.href = "./usr-dashboard.php";
-        } else {
-            // Retrieve the text of the selected option
-            const selectedText = selectBox.options[selectBox.selectedIndex].textContent;
-            //alert(selectedText); // Output the selected text
-            document.cookie = `org_id=${selectedText}; path=/; max-age=${100 * 365 * 24 * 60 * 60};`;
-            window.location.href = "./org-dashboard.php";
-        }
-    }
-</script>
+</html>
