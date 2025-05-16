@@ -7,10 +7,11 @@ global $config, $userName, $org;
 
 // Menu-items
 $menuItems = [
-    ['url' => '/app/views/dashboard.php', 'icon' => 'fa-chart-line', 'text' => 'Dashboard'],
+    ['url' => '/app/views/dashboard.php', 'icon' => 'fa-chart-line', 'text' => 'Vluchoverzicht'],
     ['url' => '/app/views/flight-planning/step1.php', 'icon' => 'fa-map-marked-alt', 'text' => 'Vluchtplanning'],
     ['url' => '/app/views/monitoring.php', 'icon' => 'fa-chart-bar', 'text' => 'Monitoring'],
-    ['url' => '/app/views/resources/drones.php', 'icon' => 'fa-folder-open', 'text' => 'Resources'],
+    ['url' => '/app/views/assets/drones.php', 'icon' => 'fa-folder-open', 'text' => 'Assets'],
+    ['url' => '/app/views/reports/flight-logs.php', 'icon' => 'fa-file-text', 'text' => 'Reports'],
     ['url' => '/app/views/teamManagement.php', 'icon' => 'fa-users-cog', 'text' => 'Teambeheer']
 ];
 ?>
