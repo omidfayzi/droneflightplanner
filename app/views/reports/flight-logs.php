@@ -96,7 +96,7 @@ $totalFlightTimeString = sprintf("%d uur %02d minuten", $totalFlightHours, $rema
 
 $showHeader = 1;
 $userName = $_SESSION['user']['first_name'] ?? 'Onbekend';
-$headTitle = "Vlucht Logs";
+$headTitle = "Vluchten Logs";
 $gobackUrl = 0;
 $rightAttributes = 0;
 
@@ -104,18 +104,20 @@ $bodyContent = "
     <div class='h-full bg-gray-100 shadow-md rounded-tl-xl w-full flex flex-col'>
         <div class='p-6 bg-white flex justify-between items-center border-b border-gray-200 flex-shrink-0'>
             <div class='flex space-x-6 text-sm font-medium'>
-                <a href='flight-logs.php' class='text-gray-900 border-b-2 border-black pb-2'>Vlucht Logs</a>
+                <a href='flight-logs.php' class='text-gray-900 border-b-2 border-black pb-2'>Vluchten Logs</a>
                 <a href='incidents.php' class='text-gray-600 hover:text-gray-900'>Incidenten</a>
             </div>
-            <button class='bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors text-sm'>
-                <i class='fa-solid fa-plus mr-2'></i>Nieuwe Vluchtplanning
+            <button class='bg-black text-white px-4 py-2 rounded-md hover:bg-black'>
+                <a href='add-flight-log.php' class='flex items-center'>
+                    <i class='fa-solid fa-plus mr-2'></i> Nieuwe vlucht log
+                </a>
             </button>
         </div>
 
         <div class='p-6 overflow-y-auto flex-grow'>
             <div class='bg-white rounded-lg shadow overflow-hidden'>
                 <div class='p-6 border-b border-gray-200 flex justify-between items-center'>
-                    <h2 class='text-xl font-semibold text-gray-800'>Overzicht Vlucht Logs</h2>
+                    <h2 class='text-xl font-semibold text-gray-800'>Overzicht Vluchten Logs</h2>
                     <div>
                         <input type='text' placeholder='Zoek vlucht...' class='px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500'>
                     </div>
