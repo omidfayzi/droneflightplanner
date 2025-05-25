@@ -71,10 +71,7 @@ return [
         'headTitle' => 'Drone Vluchtvoorbereidingssysteem',
         'gobackUrl' => 0,
         'rightAttributes' => 0,
-        'bodyContent' => '<div class="container mx-auto p-4">
-            <h1 class="text-3xl font-bold text-gray-900">Welkom bij het Drone Vluchtvoorbereidingssysteem</h1>
-            <p class="mt-4 text-gray-700">Gebruik het navigatiemenu om verder te gaan.</p>
-        </div>',
+        'bodyContent' => '',
     ],
     'paths' => [
         'assets' => __DIR__ . '/app/assets/',

@@ -1,42 +1,44 @@
 <?php
-// Start sessie veilig
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+// /var/www/public/frontend/pages/assets/teamManagement.php
 
-// Laad benodigde bestanden
+if (session_status() === PHP_SESSION_NONE) session_start();
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../functions.php';
 
-// Haal data op van de API
 $apiBaseUrl = "http://devserv01.holdingthedrones.com:4539";
 $teamsUrl = "$apiBaseUrl/teams";
-
-// Probeer de teamgegevens op te halen
-$teamsResponse = file_get_contents($teamsUrl);
+$teamsResponse = @file_get_contents($teamsUrl);
 $teams = $teamsResponse ? json_decode($teamsResponse, true) : [];
+if (isset($teams['data'])) $teams = $teams['data'];
 
-// Stel variabelen in voor template.php
+// Verzamel ALLE kolomnamen uit alle teams
+$kolomSet = [];
+foreach ($teams as $team) {
+    foreach ($team as $key => $value) {
+        $kolomSet[$key] = true;
+    }
+}
+$kolommen = array_keys($kolomSet);
+
 $showHeader = 1;
 $userName = $_SESSION['user']['first_name'] ?? 'Onbekend';
 $org = isset($organisation) ? $organisation : 'Holding the Drones';
 $headTitle = "Teams Overzicht";
-$gobackUrl = 0; // Geen terug-knop
-$rightAttributes = 0; // Standaard header-attributen
+$gobackUrl = 0;
+$rightAttributes = 0;
 
-// Body content met dynamische data
+// Body content
 $bodyContent = "
     <div class='h-[83.5vh] bg-gray-100 shadow-md rounded-tl-xl w-13/15'>
         <!-- Navigatie -->
         <div class='p-8 bg-white flex justify-between items-center border-b border-gray-200'>
             <div class='flex space-x-4 text-sm font-medium'>
                 <a href='drones.php' class='text-gray-600 hover:text-gray-900'>Drones</a>
-                <a href='teamManagement.php' class='text-black border-b-2 border-black pb-2'>Teams</a>
+                <a href='teamManagement.php' class='text-black border-b-2 border-black pb-2'>Organisaties</a>
                 <a href='employees.php' class='text-gray-600 hover:text-gray-900'>Personeel</a>
-                <a href='addons.php' class='text-gray-600 hover:text-gray-900'>Add-ons</a>
+                <a href='addons.php' class='text-gray-600 hover:text-gray-900'>Overige Assets</a>
             </div>
         </div>
-
         <!-- Hoofdinhoud -->
         <div class='p-6 overflow-y-auto max-h-[calc(90vh-200px)]'>
             <div class='bg-white rounded-lg shadow overflow-hidden'>
@@ -49,40 +51,48 @@ $bodyContent = "
                             <option value='Actief'>Actieve teams</option>
                             <option value='Inactief'>Inactieve teams</option>
                         </select>
-                        <select id='teamLeaderFilter' class='border border-gray-300 rounded-lg px-4 py-2 text-gray-600 focus:outline-none pr-8'>
-                            <option value=''>Filter: Alle teamleiders</option>
-                            <option value='Jan Smit'>Jan Smit</option>
-                            <option value='Eva de Jong'>Eva de Jong</option>
-                        </select>
+                        <!-- Teamleider filter eventueel dynamisch genereren -->
                     </div>
                 </div>
                 <div class='overflow-x-auto'>
                     <table class='w-full'>
                         <thead class='bg-gray-200 text-sm'>
-                            <tr>
-                                <th class='p-4 text-left text-gray-600 font-medium'>Teamnaam</th>
-                                <th class='p-4 text-left text-gray-600 font-medium'>Teamleider</th>
-                                <th class='p-4 text-left text-gray-600 font-medium'>Aantal leden</th>
-                                <th class='p-4 text-left text-gray-600 font-medium'>Status</th>
-                                <th class='p-4 text-left text-gray-600 font-medium'>Acties</th>
-                            </tr>
+                            <tr>";
+
+// Dynamisch alle kolommen tonen als header
+foreach ($kolommen as $kolom) {
+    $bodyContent .= "<th class='p-4 text-left text-gray-600 font-medium'>" . htmlspecialchars($kolom) . "</th>";
+}
+// Altijd actieskolom
+$bodyContent .= "<th class='p-4 text-left text-gray-600 font-medium'>Acties</th>";
+$bodyContent .= "</tr>
                         </thead>
                         <tbody class='divide-y divide-gray-200 text-sm'>";
 
-// Loop door de teams om tabelrijen dynamisch te genereren
-foreach ($teams as $team) {
-    $memberCount = $team['memberCount'] ?? 'N/A'; // Aantal leden, aan te passen aan API-veld
-
-    $bodyContent .= "
-                            <tr class='hover:bg-gray-50 transition'>
-                                <td class='p-4 text-gray-800'>" . htmlspecialchars($team['DFPPSTM_Name'] ?? 'N/A') . "</td>
-                                <td class='p-4 text-gray-600'>" . htmlspecialchars($team['DFPPSTM_LeaderId'] ?? 'N/A') . "</td>
-                                <td class='p-4 text-gray-600'>$memberCount</td>
-                                <td class='p-4 text-gray-600'>" . htmlspecialchars($team['DFPPSTM_Status'] ?? 'Onbekend') . "</td>
-                                <td class='p-4 text-gray-600'>
-                                    <a href='../employees.php?team=" . htmlspecialchars($team['DFPPSTM_Id'] ?? '') . "' class='text-blue-600 hover:text-blue-800'>Teambeheer</a>
-                                </td>
-                            </tr>";
+// Alle rijen dynamisch
+if (!empty($teams) && is_array($teams)) {
+    foreach ($teams as $team) {
+        $bodyContent .= "<tr class='hover:bg-gray-50 transition'>";
+        foreach ($kolommen as $kolom) {
+            $waarde = array_key_exists($kolom, $team) ? $team[$kolom] : '';
+            if (is_bool($waarde)) $waarde = $waarde ? 'Ja' : 'Nee';
+            $bodyContent .= "<td class='p-4 text-gray-600'>" . htmlspecialchars((string)$waarde) . "</td>";
+        }
+        // Acties — als teamId/DFPPSTM_Id/id bestaat, anders disabled
+        $id = $team['teamId'] ?? $team['DFPPSTM_Id'] ?? $team['id'] ?? '';
+        $disabledClass = $id ? "" : "opacity-50 pointer-events-none";
+        $beheerLink = $id ? "../employees.php?team=" . urlencode($id) : "#";
+        $viewLink = $id ? "view_team.php?id=" . urlencode($id) : "#";
+        $editLink = $id ? "edit_team.php?id=" . urlencode($id) : "#";
+        $bodyContent .= "<td class='p-4 text-gray-600 flex space-x-2'>
+            <a href='$beheerLink' class='hover:text-blue-700 $disabledClass' title='Teambeheer'><i class='fa-solid fa-users'></i></a>
+            <a href='$viewLink' class='hover:text-blue-700 $disabledClass' title='Bekijken'><i class='fa-solid fa-eye'></i></a>
+            <a href='$editLink' class='hover:text-blue-700 $disabledClass' title='Bewerken'><i class='fa-solid fa-pencil'></i></a>
+        </td>";
+        $bodyContent .= "</tr>";
+    }
+} else {
+    $bodyContent .= "<tr><td colspan='" . (count($kolommen) + 1) . "' class='text-center text-gray-500 py-10'>Geen teams gevonden of data kon niet worden geladen.</td></tr>";
 }
 
 $bodyContent .= "
@@ -94,6 +104,5 @@ $bodyContent .= "
     </div>
 ";
 
-// Include header en template
 require_once __DIR__ . '/../../components/header.php';
 require_once __DIR__ . '/../layouts/template.php';

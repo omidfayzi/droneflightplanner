@@ -11,3 +11,21 @@ module.exports = {
    plugins: [],
 }
 
+module.exports = {
+  content: [
+    "./app/views/**/*.php",
+    "./components/**/*.php"
+  ],
+  theme: {
+    extend: {
+      colors: {
+        primary: '#313234',
+        secondary: '#2563EB',
+        background: '#F3F4F6',
+        surface: '#FFFFFF',
+        altSurface: '#F9FAFB'
+      }
+    },
+  },
+  plugins: [],
+}
