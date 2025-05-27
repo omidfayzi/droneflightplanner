@@ -7,7 +7,7 @@ require_once __DIR__ . '/../../../functions.php';
 
 // Haal data op van de API
 $apiBaseUrl = "http://devserv01.holdingthedrones.com:4539";
-$flightLogsUrl = "$apiBaseUrl/flightLogs";
+$flightLogsUrl = "$apiBaseUrl/vluchten";
 $flightLogsResponse = @file_get_contents($flightLogsUrl);
 $flightLogs = $flightLogsResponse ? json_decode($flightLogsResponse, true) : [];
 if (json_last_error() !== JSON_ERROR_NONE && $flightLogsResponse) {

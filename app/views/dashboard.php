@@ -19,7 +19,7 @@ if (!defined('MAIN_API_URL')) {
 $mainApiBaseUrl = MAIN_API_URL;
 
 // Endpoint voor het ophalen van vluchten van JOUW BACKEND (Node.js/Express)
-$flightsApiUrl = $mainApiBaseUrl . 'flightEntries'; // Dit is nu correct om naar flightEntriesEndpoint.js te wijzen
+$flightsApiUrl = $mainApiBaseUrl . 'vluchten'; // Dit is nu correct om naar vluchten.js te wijzen
 
 // --- Vluchten en statistieken ophalen ---
 $recentFlights = [];

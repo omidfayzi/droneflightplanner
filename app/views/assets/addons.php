@@ -6,7 +6,7 @@ require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../functions.php';
 
 $apiBaseUrl = "http://devserv01.holdingthedrones.com:4539";
-$overigeAssetsUrl = "$apiBaseUrl/addons";
+$overigeAssetsUrl = "$apiBaseUrl/overige_assets";
 $assetsResponse = @file_get_contents($overigeAssetsUrl);
 $assets = $assetsResponse ? json_decode($assetsResponse, true) : [];
 if (isset($assets['data'])) $assets = $assets['data'];

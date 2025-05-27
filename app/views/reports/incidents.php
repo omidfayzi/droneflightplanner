@@ -7,7 +7,7 @@ require_once __DIR__ . '/../../../functions.php';
 
 // Haal data uit de API
 $apiBaseUrl = "http://devserv01.holdingthedrones.com:4539";
-$incidentsUrl = "$apiBaseUrl/incidents";
+$incidentsUrl = "$apiBaseUrl/incidenten"; // <-- jouw API endpoint
 $incidentsResponse = @file_get_contents($incidentsUrl);
 $incidents = $incidentsResponse ? json_decode($incidentsResponse, true) : [];
 if (isset($incidents['data'])) $incidents = $incidents['data'];

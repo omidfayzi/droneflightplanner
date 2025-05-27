@@ -6,7 +6,7 @@ require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../functions.php';
 
 $apiBaseUrl = "http://devserv01.holdingthedrones.com:4539";
-$personeelUrl = "$apiBaseUrl/employees"; // <-- jouw API endpoint
+$personeelUrl = "$apiBaseUrl/personeel"; // <-- jouw API endpoint
 $personeelResponse = @file_get_contents($personeelUrl);
 $personeel = $personeelResponse ? json_decode($personeelResponse, true) : [];
 if (isset($personeel['data'])) $personeel = $personeel['data'];
