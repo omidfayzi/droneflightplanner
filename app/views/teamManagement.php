@@ -1,123 +1,79 @@
 <?php
+// /var/www/public/app/views/teamManagement.php
+// Dit is de centrale hub die routeert naar het juiste dashboard type na organisatiekeuze.
+
 session_start();
 
-// Laad benodigde bestanden
-require_once __DIR__ . '/../../config/config.php';
-require_once __DIR__ . '/../../functions.php'; 
+// Het pad naar config.php en functions.php moet ook correct zijn vanuit DIT bestand.
+// Als deze in /var/www/public/ staan, en dit script in /var/www/public/app/views/, dan is het:
+require_once __DIR__ . '/../../config/config.php'; // ../../ betekent 2 mappen omhoog vanaf 'views'
+require_once __DIR__ . '/../../functions.php';   // Dit pad ook aanpassen als nodig
 
-// Variabelen voor template.php
-$showHeader = 1;
-$userName = $_SESSION['user']['first_name'] ?? 'Onbekend';
-$org = isset($organisation) ? $organisation : 'Organisatie A';
-$headTitle = "Teambeheer";
-$gobackUrl = 1; // Terug-knop aan
-$rightAttributes = 0;
+// Haal sessievariabelen op, ingesteld door landing-page.php
+$selectedOrgId = $_SESSION['selected_organisation_id'] ?? null;
+$loggedInUserId = $_SESSION['user']['id'] ?? null; // ID van de ingelogde gebruiker
+$selectedFunctionId = $_SESSION['selected_function_id'] ?? null; // ID van de gekozen Functie/Rol
 
-// Simuleer teamdata (in praktijk uit database)
-$teamId = $_GET['team'] ?? null;
-$team = [
-    'name' => 'Team Alpha',
-    'leader' => 'Jan Smit',
-    'members' => [
-        ['name' => 'Jan Smit', 'role' => 'Hoofd piloot', 'email' => 'jan@example.com'],
-        ['name' => 'Eva de Jong', 'role' => 'Drone Operator', 'email' => 'eva@example.com'],
-        ['name' => 'Omid Fayzi', 'role' => 'Developer', 'email' => 'omid@example.com'],
-        ['name' => 'Jan de boer', 'role' => 'Drone Operator', 'email' => 'omid@example.com']
-    ],
-    'status' => 'Actief',
-    'last_updated' => '2023-10-24'
-];
 
-// Body content
-$bodyContent = "
-    <div class='h-[83.5vh] bg-gray-50 shadow-md rounded-tl-xl w-13/15'>
-        <!-- Kruimelpad en acties -->
-        <div class='p-6 bg-white border-b border-gray-200 flex justify-between items-center'>
-            <nav class='text-sm text-gray-600'>
-                <a href='/frontend/pages/resources_teams.php' class='hover:text-gray-900'>Teams</a> 
-                <span class='mx-2'>></span> 
-                <span class='font-medium text-gray-800'>{$team['name']}</span>
-            </nav>
-             <button title='Team verwijderen' class='text-black px-4 py-2 rounded-lg'>
-                 <i class='fa-solid fa-trash'></i> 
-                </button>
-        </div>
+// --- Routing Logica ---
+// Check primaire validaties voor de gehele dashboard-flow
+if ($loggedInUserId === null) {
+    // Gebruiker is niet ingelogd of geen user ID in sessie
+    $_SESSION['form_error'] = "U bent niet ingelogd. Log in alstublieft.";
+    // Correcte redirect naar landing-page.php vanaf DIT bestand
+    // '/../../frontend/pages/landing-page.php' ten opzichte van /app/views/teamManagement.php
+    header("Location: " . __DIR__ . "/../../frontend/pages/landing-page.php");
+    exit;
+} elseif ($selectedOrgId !== null && $selectedOrgId !== 0) {
+    // Scenario: Een SPECIFIEKE ORGANISATIE is geselecteerd
+    // INCLUDE HET ORGANISATIE-DASHBOARD MET GECORRIGEERD RELATIEF PAD
+    // Dit pad is: (vanuit /app/views/) --> 2 mappen omhoog (/public/) --> dan /frontend/pages/ --> dan organization_dashboard.php
+    require_once __DIR__ . '/../../frontend/pages/organization_dashboard.php';
+    // organization_dashboard.php genereert zelf al de HTML en required de header/template.
+    // DUS: Geen verdere HTML/require_once hieronder.
 
-        <!-- Hoofdinhoud -->
-        <div class='p-8 overflow-y-auto max-h-[calc(90vh-200px)]'>
-            <!-- Teamdetails -->
-            <div class='bg-white rounded-xl shadow-lg p-6 mb-8'>
-                <div class='grid grid-cols-1 md:grid-cols-3 gap-8'>
-                    <div>
-                        <p class='text-sm text-gray-500 mb-2'>Teamleider</p>
-                        <p class='text-lg font-medium text-gray-800 flex items-center'>
-                            <i class='fa-solid fa-user mr-3 text-gray-600'></i> {$team['leader']}
-                        </p>
-                    </div>
-                    <div>
-                        <p class='text-sm text-gray-500 mb-2'>Status</p>
-                        <span class='bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium'>{$team['status']}</span>
-                    </div>
-                    <div>
-                        <p class='text-sm text-gray-500 mb-2'>Laatst gewijzigd</p>
-                        <p class='text-lg font-medium text-gray-800 flex items-center'>
-                            <i class='fa-solid fa-calendar-alt mr-3 text-gray-600'></i> {$team['last_updated']}
-                        </p>
-                    </div>
-                </div>
+} else {
+    // Scenario: Individueel Account geselecteerd (selectedOrgId is null of 0)
+    // Toon een persoonlijk dashboard of dwing een keuze af.
+
+    $showHeader = 1;
+    $userName = $_SESSION['user']['first_name'] ?? 'Onbekend';
+    $headTitle = "Mijn Persoonlijk Dashboard";
+    // Correcte redirect voor terug-knop (pad vanaf deze pagina naar landing-page)
+    $gobackUrl = __DIR__ . '/../../frontend/pages/landing-page.php';
+    $rightAttributes = 0; // Geen extra knoppen
+
+    $bodyContent = "
+        <div class='h-[83.5vh] bg-gray-50 shadow-md rounded-tl-xl w-full max-w-full lg:w-13/15 mx-auto p-4 md:p-8'>
+            <div class='mb-6 bg-white rounded-lg shadow-sm p-4'>
+                <nav class='text-sm text-gray-600'>
+                    <a href='" . htmlspecialchars($gobackUrl) . "' class='hover:text-gray-900'>Start</a>
+                    <span class='mx-2'>/</span>
+                    <span class='font-medium text-gray-800'>Mijn Persoonlijk Dashboard</span>
+                </nav>
+            </div>
+            <h1 class='text-2xl font-bold mb-4 text-gray-800'>Welkom, " . htmlspecialchars($userName) . "!</h1>
+            <p class='text-gray-700 mb-6'>Dit is uw persoonlijk dashboard. Geen specifieke organisatie geselecteerd. U bent ingelogd met ID: " . htmlspecialchars($loggedInUserId) . "</p>
+            
+            <div class='grid grid-cols-1 md:grid-cols-2 gap-6'>
+                 <div class='bg-white rounded-lg shadow-sm p-5'>
+                    <h3 class='text-lg font-semibold text-gray-800'>Geselecteerde Functie</h3>
+                    <p class='text-gray-600 mt-2'>Functie ID: " . htmlspecialchars($selectedFunctionId) . "</p>
+                    <p class='text-gray-500 text-sm mt-1'>Dit kan de rol van uw account voorstellen.</p>
+                 </div>
+                 <div class='bg-blue-600 rounded-lg shadow-lg p-5 flex flex-col items-center justify-center text-white'>
+                    <h3 class='text-xl font-bold mb-3'>Start Nieuwe Persoonlijke Vlucht</h3>
+                    <a href='" . htmlspecialchars(__DIR__ . '/../../frontend/pages/flight-planning/step1.php') . "' class='bg-white text-blue-600 font-bold py-2 px-6 rounded-full hover:bg-blue-100 transition-colors'>
+                        <i class='fa-solid fa-plane mr-2'></i>Mijn Vlucht Starten
+                    </a>
+                 </div>
             </div>
 
-            <!-- Ledenlijst -->
-            <div class='bg-white rounded-xl shadow-lg overflow-hidden'>
-                <div class='p-6 border-b border-gray-200 flex justify-between items-center'>
-                    <h2 class='text-2xl font-semibold text-gray-900'>Teamleden</h2>
-                    <input type='text' placeholder='Zoek lid...' class='border border-gray-300 rounded-lg px-4 py-2 text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500' />
-                </div>
-                <div class='overflow-x-auto'>
-                    <table class='w-full text-sm'>
-                        <thead class='bg-gray-100'>
-                            <tr>
-                                <th class='p-4 text-left text-gray-600'>Naam</th>
-                                <th class='p-4 text-left text-gray-600'>Rol</th>
-                                <th class='p-4 text-left text-gray-600'>Email</th>
-                                <th class='p-4 text-left text-gray-600'>Acties</th>
-                            </tr>
-                        </thead>
-                        <tbody class='divide-y divide-gray-200'>
-                            " . implode('', array_map(function($member) {
-                                $initials = strtoupper(substr($member['name'], 0, 1));
-                                return "
-                                    <tr class='hover:bg-gray-50 transition'>
-                                        <td class='p-4 flex items-center'>
-                                            <div class='w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center mr-3'>{$initials}</div>
-                                            <span class='text-gray-800 font-medium'>{$member['name']}</span>
-                                        </td>
-                                        <td class='p-4 text-gray-600'>{$member['role']}</td>
-                                        <td class='p-4 text-gray-600'>{$member['email']}</td>
-                                        <td class='p-4 text-right'>
-                                            <button class='text-gray-600 hover:text-gray-800 transition'>
-                                                <i class='fa-solid fa-ellipsis-vertical'></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ";
-                            }, $team['members'])) . "
-                        </tbody>
-                    </table>
-                </div>
-                <div class='p-4 bg-gray-50 border-t border-gray-200 flex justify-between text-sm'>
-                    <span class='text-gray-600'>" . count($team['members']) . " leden</span>
-                    <div class='flex space-x-2'>
-                        <button class='px-3 py-1 bg-gray-200 rounded hover:bg-gray-300'>Vorige</button>
-                        <button class='px-3 py-1 bg-gray-200 rounded hover:bg-gray-300'>Volgende</button>
-                    </div>
-                </div>
-            </div>
+            <p class='mt-6'><a href='" . htmlspecialchars($gobackUrl) . "' class='text-blue-500 hover:underline'>Wijzig organisatie of functie</a></p>
         </div>
-    </div>
-";
-
-// Include header en template
-require_once '../components/header.php';
-require_once __DIR__ . '/layouts/template.php';
-?>
+    ";
+    // Deze dashboard.php pagina INCLUDEt nu de header en template files als deze content wordt getoond
+    // Hier worden de paden aangepast naar hun locatie RELATIEF AAN teamManagement.php (dit bestand)
+    require_once __DIR__ . '/../components/header.php'; // Een map omhoog naar 'app', dan naar 'components'
+    require_once __DIR__ . '/layouts/template.php';    // Dezelfde map '/layouts'
+}
