@@ -34,7 +34,6 @@ $bodyContent = "
         <div class='p-8 bg-white flex justify-between items-center border-b border-gray-200'>
             <div class='flex space-x-4 text-sm font-medium'>
                 <a href='drones.php' class='text-gray-600 hover:text-gray-900'>Drones</a>
-                <a href='teams.php' class='text-gray-600 hover:text-gray-900'>Organisaties</a>
                 <a href='employees.php' class='text-black border-b-2 border-black pb-2'>Personeel</a>
                 <a href='addons.php' class='text-gray-600 hover:text-gray-900'>Overige Assets</a>
             </div>

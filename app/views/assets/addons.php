@@ -23,7 +23,7 @@ $kolommen = array_keys($kolomSet);
 $showHeader = 1;
 $userName = $_SESSION['user']['first_name'] ?? 'Onbekend';
 $org = isset($organisation) ? $organisation : 'Organisatie A';
-$headTitle = "Overige Assets";
+$headTitle = "Overige Assets Inventaris";
 $gobackUrl = 0;
 $rightAttributes = 0;
 
@@ -33,7 +33,6 @@ $bodyContent = "
         <div class='p-8 bg-white flex justify-between items-center border-b border-gray-200'>
             <div class='flex space-x-4 text-sm font-medium'>
                 <a href='drones.php' class='text-gray-600 hover:text-gray-900'>Drones</a>
-                <a href='teams.php' class='text-gray-600 hover:text-gray-900'>Organisaties</a>
                 <a href='employees.php' class='text-gray-600 hover:text-gray-900'>Personeel</a>
                 <a href='addons.php' class='text-black border-b-2 border-black pb-2'>Overige Assets</a>
             </div>

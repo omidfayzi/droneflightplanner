@@ -61,7 +61,6 @@ $bodyContent = "
         <div class='p-6 bg-white flex justify-between items-center border-b border-gray-200 flex-shrink-0'>
             <div class='flex space-x-6 text-sm font-medium'>
                 <a href='drones.php' class='text-gray-900 border-b-2 border-black pb-2'>Drones</a>
-                <a href='teams.php' class='text-gray-600 hover:text-gray-900'>Organisaties</a>
                 <a href='employees.php' class='text-gray-600 hover:text-gray-900'>Personeel</a>
                 <a href='addons.php' class='text-gray-600 hover:text-gray-900'>Add-ons</a>
             </div>

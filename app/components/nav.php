@@ -11,7 +11,7 @@ $menuItems = [
     ['url' => '/app/views/flight-planning/step1.php', 'icon' => 'fa-map-marked-alt', 'text' => 'Vluchtplanning'],
     ['url' => '/app/views/monitoring.php', 'icon' => 'fa-chart-bar', 'text' => 'Monitoring'],
     ['url' => '/app/views/assets/drones.php', 'icon' => 'fa-folder-open', 'text' => 'Assets'],
-    ['url' => '/app/views/reports/flight-logs.php', 'icon' => 'fa-file-text', 'text' => 'Reports'],
+    ['url' => '/app/views/reports/incidents.php', 'icon' => 'fa-file-text', 'text' => 'Reports'],
     ['url' => '/app/views/organisatie.php', 'icon' => 'fa-solid fa-building', 'text' => 'Organisatie']
 ];
 ?>
