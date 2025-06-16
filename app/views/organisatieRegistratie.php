@@ -1,36 +1,30 @@
 <?php
 // /var/www/public/frontend/pages/organisatieRegistratie.php
-// Pagina voor het registreren van een nieuwe organisatie (Visueel Verfijnd met zwevende drone)
 
 session_start();
 
 require_once __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../functions.php';
 
-// Valideren van gebruikersstatus (moet ingelogd zijn om te kunnen registreren)
+// Valideer inloggen
 if (!isset($_SESSION['user']['id'])) {
     $_SESSION['form_error'] = "U moet ingelogd zijn om organisaties te registreren.";
     header("Location: landing-page.php");
     exit;
 }
 
-$loggedInUserId = $_SESSION['user']['id'];
-
-// Haal MAIN_API_URL op uit configuratie
+// Gebruik de juiste poort voor je backend (nu 3006)
 if (!defined('MAIN_API_URL')) {
-    define('MAIN_API_URL', 'https://api2.droneflightplanner.nl');
+    define('MAIN_API_URL', 'http://devserv01.holdingthedrones.com:3006');
 }
 $mainApiBaseUrl = MAIN_API_URL;
-
-// Endpoint voor het toevoegen van organisaties
 $organisatiesCreateApiUrl = $mainApiBaseUrl . '/organisaties';
 
-// Afbeeldingspaden - Zorg dat deze URL's direct toegankelijk zijn via de webserver
+// Afbeeldingspaden
 $backgroundImageUrl = '/app/assets/images/droneBackgroundImage.jpg';
-$droneVisualElementUrl = '/app/assets/images/drone.png'; // Dit is nu het visuele element, niet het logo
+$droneVisualElementUrl = '/app/assets/images/drone.png';
 
-
-// --- GECENTRALISEERDE API HULPFUNCTIE voor MAIN_API_URL ---
+// GECENTRALISEERDE API HULPFUNCTIE
 function callMainApi(string $url, string $method = 'GET', array $payload = []): array
 {
     $ch = curl_init($url);
@@ -50,20 +44,15 @@ function callMainApi(string $url, string $method = 'GET', array $payload = []): 
             $options[CURLOPT_POST] = true;
         }
     }
-    if (isset($_SESSION['user']['auth_token'])) {
-        $options[CURLOPT_HTTPHEADER][] = 'Authorization: Bearer ' . $_SESSION['user']['auth_token'];
-    }
-
     curl_setopt_array($ch, $options);
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
-    error_log("Org Reg API Call Log: URL: $url, Method: $method, HTTP: $httpCode, Response: " . ($response ?: '(empty)'));
+    error_log("Org Reg API Call Log: URL: $url, Method: $method, HTTP: $httpCode, Payload: " . json_encode($payload) . ", Response: " . ($response ?: '(empty)'));
 
     if ($response === false) {
-        $error = curl_error($ch);
-        return ['error' => "cURL Fout: $error"];
+        return ['error' => "cURL Fout: verbinding mislukt"];
     }
     if ($httpCode >= 400) {
         $decodedError = json_decode($response, true);
@@ -74,8 +63,7 @@ function callMainApi(string $url, string $method = 'GET', array $payload = []): 
     return is_array($json) ? $json : ['error' => "Ongeldige JSON response."];
 }
 
-
-// --- POST Verwerking van Formulier (via AJAX) ---
+// POST-verwerking van het formulier via AJAX
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
     $inputJSON = file_get_contents('php://input');
     $formData = json_decode($inputJSON, true);
@@ -95,7 +83,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_SERVER['HTTP_X_REQUESTED_W
         'plaats' => $formData['plaats'],
         'land' => $formData['land'],
         'isActive' => isset($formData['isActive']) ? 1 : 0,
-        '_entry_ID' => $loggedInUserId,
+        '_entry_ID' => (int)$_SESSION['user']['id'], // integer user ID!
+        'logoBase64' => null
     ];
 
     $response = callMainApi($organisatiesCreateApiUrl, 'POST', $payload);
@@ -105,14 +94,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_SERVER['HTTP_X_REQUESTED_W
         header('Content-Type: application/json');
         echo json_encode(['status' => 'error', 'message' => 'Fout bij registreren organisatie: ' . $response['error']]);
     } else {
-        http_response_code(200);
+        http_response_code(201);
         header('Content-Type: application/json');
-        echo json_encode(['status' => 'success', 'message' => 'Organisatie succesvol geregistreerd!', 'insertedId' => $response['organisatieId'] ?? null]);
+        echo json_encode([
+            'status' => 'success',
+            'message' => 'Organisatie succesvol geregistreerd!',
+            'organisatieId' => $response['organisatieId'] ?? null
+        ]);
     }
     exit;
 }
 
-// --- Ophalen landen voor dropdown (GET) ---
+// Ophalen landen voor dropdown
 $countries = [
     'Nederland',
     'België',
@@ -132,8 +125,6 @@ $countries = [
     'Mexico',
     'Zwitserland'
 ];
-
-// --- Start van de HTML voor een stand-alone pagina ---
 ?>
 <!DOCTYPE html>
 <html lang="nl">
@@ -174,35 +165,21 @@ $countries = [
             flex-direction: column;
             align-items: center;
             position: relative;
-            /* De formulier-container zelf, als relatief gepositioneerde ouder van responseMessage */
             overflow: visible;
-            /* Dit is BELANGRIJK! Anders wordt de drone-afbeelding binnen de grenzen geclipt */
             margin: 20px 0;
         }
 
-        /* Het drone-visuele element (NU MET position: absolute TEN OPZICHTE VAN BODY!) */
         .drone-visual-element {
             width: 300px;
-            /* Grotere drone afbeelding */
             height: auto;
             position: absolute;
-            /* Zeer belangrijk: Absolute t.o.v. de dichtstbijzijnde *positioneerde* ouder.
-                                   Als body geen position heeft, is het de initial containing block (viewport). */
-            /* BEGIN DEMO POSITIONERING (VERPLAATS DEZE WAARDEN ZELF VOOR DE JUISTE PLAATSING) */
             top: 7%;
             left: 65%;
-            /* EINDE DEMO POSITIONERING */
             z-index: 100;
-            /* Zorgt dat het boven alles zweeft */
             filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.3));
-            /* Prominentere schaduw */
             pointer-events: none;
-            /* Negeer muisklikken zodat je formulier niet blokkeert */
         }
 
-        /* De .container-wrapper ZELF heeft geen overflow:hidden meer, dus de drone mag daarbuiten */
-
-        /* Organisatie Logo Upload */
         .logo-upload-container {
             border: 2px dashed #a7bed3;
             border-radius: 8px;
@@ -220,13 +197,11 @@ $countries = [
 
         .logo-preview {
             max-width: 120px;
-            /* Grotere preview */
             max-height: 120px;
             border-radius: 8px;
             margin-top: 15px;
             object-fit: contain;
             border: 1px solid #ddd;
-            /* Dunne rand om preview */
         }
 
         .file-input {
@@ -357,7 +332,6 @@ $countries = [
 </head>
 
 <body>
-    <!-- Het drone-visuele element (deze staat NIET meer IN de container-wrapper) -->
     <img src="<?= htmlspecialchars($droneVisualElementUrl) ?>" alt="Drone Visual Element" class="drone-visual-element">
 
     <div class="container-wrapper">
@@ -383,15 +357,11 @@ $countries = [
             <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                     <label for="organisatienaam" class="form-label">Organisatienaam <span class="required-asterisk">*</span></label>
-                    <input type="text" name="organisatienaam" id="organisatienaam" required
-                        class="form-control"
-                        placeholder="B.V. SkyView Drones">
+                    <input type="text" name="organisatienaam" id="organisatienaam" required class="form-control" placeholder="B.V. SkyView Drones">
                 </div>
                 <div>
                     <label for="kvkNummer" class="form-label">KVK Nummer <span class="required-asterisk">*</span></label>
-                    <input type="text" name="kvkNummer" id="kvkNummer" required
-                        class="form-control"
-                        placeholder="12345678">
+                    <input type="text" name="kvkNummer" id="kvkNummer" required class="form-control" placeholder="12345678">
                 </div>
             </div>
 
@@ -399,29 +369,22 @@ $countries = [
             <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                     <label for="adres" class="form-label">Adres <span class="required-asterisk">*</span></label>
-                    <input type="text" name="adres" id="adres" required
-                        class="form-control"
-                        placeholder="Luchtweg 12">
+                    <input type="text" name="adres" id="adres" required class="form-control" placeholder="Luchtweg 12">
                 </div>
                 <div>
                     <label for="postcode" class="form-label">Postcode <span class="required-asterisk">*</span></label>
-                    <input type="text" name="postcode" id="postcode" required
-                        class="form-control"
-                        placeholder="1234AB">
+                    <input type="text" name="postcode" id="postcode" required class="form-control" placeholder="1234AB">
                 </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                     <label for="plaats" class="form-label">Plaats <span class="required-asterisk">*</span></label>
-                    <input type="text" name="plaats" id="plaats" required
-                        class="form-control"
-                        placeholder="Amsterdam">
+                    <input type="text" name="plaats" id="plaats" required class="form-control" placeholder="Amsterdam">
                 </div>
                 <div>
                     <label for="land" class="form-label">Land <span class="required-asterisk">*</span></label>
-                    <select name="land" id="land" required
-                        class="form-select">
+                    <select name="land" id="land" required class="form-select">
                         <option value="">Selecteer een land</option>
                         <?php foreach ($countries as $country): ?>
                             <option value="<?= htmlspecialchars($country) ?>"><?= htmlspecialchars($country) ?></option>
@@ -430,7 +393,7 @@ $countries = [
                 </div>
             </div>
 
-            <!-- isActive (checkbox) - Conform DFPP_Organisaties schema -->
+            <!-- isActive (checkbox) -->
             <div>
                 <div class="form-check">
                     <input type="checkbox" name="isActive" id="isActive" class="form-check-input" value="1" checked>
@@ -440,12 +403,10 @@ $countries = [
 
             <!-- Actie knoppen -->
             <div class="flex justify-end space-x-4 mt-6">
-                <button type="button" onclick="window.location.href='landing-page.php'"
-                    class="btn-action btn-secondary">
+                <button type="button" onclick="window.location.href='landing-page.php'" class="btn-action btn-secondary">
                     Annuleren
                 </button>
-                <button type="submit"
-                    class="btn-action btn-success">
+                <button type="submit" class="btn-action btn-success">
                     Organisatie Registreren
                 </button>
             </div>
@@ -483,16 +444,17 @@ $countries = [
         });
 
         document.getElementById('organizationRegisterForm').addEventListener('submit', async function(event) {
-            event.preventDefault(); // Voorkom standaard formulier submit
+            event.preventDefault();
 
             const form = event.target;
             const formData = new FormData(form);
             const data = {};
+
             for (const [key, value] of formData.entries()) {
                 data[key] = value;
             }
-
             data['isActive'] = document.getElementById('isActive').checked ? 1 : 0;
+            data['logoBase64'] = null;
 
             const responseMessageDiv = document.getElementById('responseMessage');
             responseMessageDiv.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'bg-gray-100', 'text-gray-700');
@@ -512,25 +474,22 @@ $countries = [
 
                 const result = await response.json();
 
-                if (response.ok) {
+                if (response.ok && result.status === 'success') {
                     responseMessageDiv.classList.add('bg-green-100', 'text-green-700');
                     responseMessageDiv.textContent = result.message || 'Organisatie succesvol geregistreerd.';
-                    form.reset(); // Reset tekstvelden
-                    document.getElementById('isActive').checked = true; // Actief veld blijft standaard aan
-
-                    // Reset logo preview
+                    form.reset();
+                    document.getElementById('isActive').checked = true;
                     document.getElementById('logoPreview').src = '#';
                     document.getElementById('logoPreview').classList.add('hidden');
                     document.querySelector('.logo-upload-container .fa-cloud-arrow-up').classList.remove('hidden');
                     document.querySelector('.logo-upload-container p:nth-of-type(1)').classList.remove('hidden');
                     document.querySelector('.logo-upload-container p:nth-of-type(2)').classList.remove('hidden');
-
                     setTimeout(() => {
                         window.location.href = 'landing-page.php';
                     }, 2000);
                 } else {
                     responseMessageDiv.classList.add('bg-red-100', 'text-red-700');
-                    responseMessageDiv.textContent = result.message || 'Er ging iets mis tijdens de registratie.';
+                    responseMessageDiv.textContent = result.message || result.error || 'Er ging iets mis tijdens de registratie.';
                 }
             } catch (error) {
                 console.error('Fout bij AJAX registratie:', error);
