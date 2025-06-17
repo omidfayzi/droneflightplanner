@@ -365,6 +365,21 @@ $countries = [
                 </div>
             </div>
 
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                    <label for="telefoon" class="form-label">Telefoon</label>
+                    <input type="text" name="telefoon" id="telefoon" class="form-control" placeholder="+31 6 12345678">
+                </div>
+                <div>
+                    <label for="email" class="form-label">E-mail</label>
+                    <input type="email" name="email" id="email" class="form-control" placeholder="info@organisatie.nl">
+                </div>
+                <div>
+                    <label for="website" class="form-label">Website</label>
+                    <input type="text" name="website" id="website" class="form-control" placeholder="https://www.organisatie.nl">
+                </div>
+            </div>
+
             <!-- Adresdetails -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>

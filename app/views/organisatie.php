@@ -1,13 +1,11 @@
 <?php
 // /var/www/public/frontend/pages/organisatie.php
-// Pagina voor organisatie details (standalone overzicht en statistieken) - Met Container volle breedte
 
 session_start();
-
 require_once __DIR__ . '/../../config/config.php';
-require_once __DIR__ . '/../../functions.php'; // Voor login(), etc.
+require_once __DIR__ . '/../../functions.php';
 
-// Valideren van de gebruikersstatus
+// Valideer gebruiker
 if (!isset($_SESSION['user']['id'])) {
     $_SESSION['form_error'] = "U moet ingelogd zijn om organisatiegegevens te bekijken.";
     header("Location: landing-page.php");
@@ -15,50 +13,39 @@ if (!isset($_SESSION['user']['id'])) {
 }
 
 $loggedInUserId = $_SESSION['user']['id'];
-$organisationIdToView = $_GET['id'] ?? null; // Organisatie ID wordt verwacht via URL-parameter
 
-// Haal MAIN_API_URL op
+// Altijd de laatst geselecteerde organisatie tonen, tenzij een andere via ?id=... is meegegeven
+$organisationIdToView = $_GET['id'] ?? ($_SESSION['selected_organisation_id'] ?? null);
+
 if (!defined('MAIN_API_URL')) {
-    define('MAIN_API_URL', 'https://api2.droneflightplanner.nl');
+    define('MAIN_API_URL', 'http://devserv01.holdingthedrones.com:3006');
 }
 $mainApiBaseUrl = MAIN_API_URL;
 
-// --- GECENTRALISEERDE API HULPFUNCTIE voor MAIN_API_URL ---
 function callMainApi(string $url, string $method = 'GET', array $payload = []): array
 {
     $ch = curl_init($url);
     $options = [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_HTTPHEADER => ['Accept: application/json'],
-        CURLOPT_TIMEOUT => 20, // Timeout
+        CURLOPT_TIMEOUT => 20,
     ];
-    if (isset($_SESSION['user']['auth_token'])) {
-        $options[CURLOPT_HTTPHEADER][] = 'Authorization: Bearer ' . $_SESSION['user']['auth_token'];
-    }
-
     curl_setopt_array($ch, $options);
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
-    error_log("Main API Call Log (Org View): URL: $url, HTTP: $httpCode, Response: " . ($response ?: '(empty)'));
-
-    if ($response === false) {
-        $error = curl_error($ch);
-        return ['error' => "cURL Fout: $error"];
-    }
+    if ($response === false) return ['error' => "API niet bereikbaar"];
     if ($httpCode >= 400) {
         $decodedError = json_decode($response, true);
         $errorMsg = $decodedError['message'] ?? $response ?: "Onbekende API Fout ($httpCode)";
         return ['error' => $errorMsg];
     }
-
     $json = json_decode($response, true);
-    return is_array($json) ? $json : ['error' => "Ongeldige JSON response."];
+    return is_array($json) ? $json : ['error' => "Ongeldige JSON response"];
 }
 
-
-// --- DATA OPHALEN OF HARDCODED FALLBACK ---
+// Fallback/defaults
 $organization = [];
 $stats = [
     'personeel' => ['totaal' => 0, 'actief' => 0],
@@ -66,67 +53,34 @@ $stats = [
     'vluchten' => ['totaal' => 0, 'maand' => 0],
     'assets' => ['totaal' => 0]
 ];
-$pageErrorMessage = null; // Specifieke error variabele voor deze pagina
+$pageErrorMessage = null;
 
-
-// Voeg HARDCODED FALLBACK DATA TOE VOOR TESTS ZONDER GELDIG API RESULTAAT
-// Deze fallback wordt ALLEEN gebruikt als de API call voor organisatie details mislukt,
-// OF als $organisationIdToView null is.
-if ($organisationIdToView === null) {
-    $pageErrorMessage = "Geen organisatie ID opgegeven in de URL. Gebruik van hardcoded fallback data.";
-    $organisationIdToView = 'HARDCODED_DEMO_ID';
-}
-
-
-// Probeer API te benaderen voor organisatie details als ID beschikbaar is en geen hardcoded demo
+// Organisatie detail ophalen via API als mogelijk
 $apiOrgDetailsSuccess = false;
-if ($organisationIdToView !== 'HARDCODED_DEMO_ID') {
+if ($organisationIdToView !== null) {
     $orgDetailsResponse = callMainApi($mainApiBaseUrl . '/organisaties/' . $organisationIdToView);
     if (!isset($orgDetailsResponse['error']) && !empty($orgDetailsResponse)) {
         $organization = $orgDetailsResponse;
         $apiOrgDetailsSuccess = true;
     } else {
-        error_log("FALLBACK_TRIGGERED: Failed to load organization details from API for ID " . $organisationIdToView . ". Error: " . ($orgDetailsResponse['error'] ?? 'Unknown. Using hardcoded fallback.'));
-        $pageErrorMessage = $pageErrorMessage ?? "Fout bij laden organisatie details van API. Toont hardcoded testdata.";
+        $pageErrorMessage = "Fout bij laden organisatie details: " . ($orgDetailsResponse['error'] ?? 'Onbekend.');
     }
+} else {
+    $pageErrorMessage = "Geen organisatie geselecteerd. Gebruik het selectiescherm.";
 }
 
-// Vul $organization en $stats met hardcoded data indien API mislukt of ID null was
-if (!$apiOrgDetailsSuccess) {
-    $isHardcodedOrg1 = ($organisationIdToView == 1); // Specifiek ID 1 kan speciale hardcoded data krijgen
-    $organization = [
-        'organisatieId' => $isHardcodedOrg1 ? 1 : ($organisationIdToView),
-        'organisatienaam' => $isHardcodedOrg1 ? 'SkyView Drones B.V. (DEMO)' : 'Demo Organisatie ' . ($organisationIdToView),
-        'kvkNummer' => $isHardcodedOrg1 ? '70112233' : 'X000Y' . ($organisationIdToView),
-        'adres' => $isHardcodedOrg1 ? 'Luchtweg 12' : 'Teststraat 1',
-        'postcode' => $isHardcodedOrg1 ? '1234AB' : '9999ZZ',
-        'plaats' => $isHardcodedOrg1 ? 'Amsterdam' : 'Demostad',
-        'land' => $isHardcodedOrg1 ? 'Nederland' : 'Testland',
-        'isActive' => 1,
-        '_entry_ID' => $loggedInUserId,
-        '_entry_Date' => '2023-01-01T10:00:00.000Z'
-    ];
-    // Vul ook statistieken hardcoded in voor de fallback-modus
-    $stats['personeel']['totaal'] = 12;
-    $stats['personeel']['actief'] = 10;
-    $stats['drones']['totaal'] = 5;
-    $stats['drones']['actief'] = 3;
-    $stats['vluchten']['totaal'] = 35;
-    $stats['vluchten']['maand'] = 8;
-    $stats['assets']['totaal'] = 22;
-} else { // Organisatie succesvol geladen via API, laad dan de ECHTE STATISTIEKEN via API
+// Statistieken ophalen als organisatie is gevonden
+if ($apiOrgDetailsSuccess) {
     $personnelResponse = callMainApi($mainApiBaseUrl . '/gebruikers?organisatieId=' . $organisationIdToView);
     if (!isset($personnelResponse['error'])) {
         $stats['personeel']['totaal'] = count($personnelResponse);
         $stats['personeel']['actief'] = count(array_filter($personnelResponse, fn($p) => ($p['isActive'] ?? 0) == 1));
     }
-
     $dronesResponse = callMainApi($mainApiBaseUrl . '/drones?organisatieId=' . $organisationIdToView);
     if (!isset($dronesResponse['error'])) {
         $stats['drones']['totaal'] = count($dronesResponse);
         $stats['drones']['actief'] = count(array_filter($dronesResponse, fn($d) => ($d['isActive'] ?? 0) == 1));
     }
-
     $flightsResponse = callMainApi($mainApiBaseUrl . '/vluchten?DFPPVlucht_OrganisatieId=' . $organisationIdToView);
     if (!isset($flightsResponse['error'])) {
         $stats['vluchten']['totaal'] = count($flightsResponse);
@@ -136,26 +90,22 @@ if (!$apiOrgDetailsSuccess) {
             if ($flightDateStr) {
                 try {
                     $flightDate = new DateTime($flightDateStr);
-                    return new DateTime($flightDateStr) >= $oneMonthAgo;
+                    return $flightDate >= $oneMonthAgo;
                 } catch (Exception $e) {
                 }
             }
             return false;
         }));
     }
-
     $assetsResponse = callMainApi($mainApiBaseUrl . '/overigeassets?eigenaar=' . $organisationIdToView);
     if (!isset($assetsResponse['error'])) {
         $stats['assets']['totaal'] = count($assetsResponse);
     }
 }
 
-
-// --- PAGINA VARIABELEN ---
+// Styling & rendering
 $headTitle = htmlspecialchars($organization['organisatienaam'] ?? 'Organisatie Detail');
-
-// Default waarde voor logo
-$orgLogoUrl = 'https://via.placeholder.com/120/EEEEEE/888888?text=ORG+Logo';
+$orgLogoUrl = $organization['logoUrl'] ?? 'https://via.placeholder.com/120/EEEEEE/888888?text=ORG+Logo';
 
 ?>
 <!DOCTYPE html>
@@ -387,7 +337,6 @@ $orgLogoUrl = 'https://via.placeholder.com/120/EEEEEE/888888?text=ORG+Logo';
 
 <body>
     <div class="main-container">
-        <!-- Kruimelpad & Navigatie -->
         <div class="p-4 border-bottom d-flex justify-content-between align-items-center">
             <nav class="text-sm text-gray-600">
                 <a href="dashboard.php" class="text-blue-500 hover:underline">Dashboard</a>
@@ -395,23 +344,11 @@ $orgLogoUrl = 'https://via.placeholder.com/120/EEEEEE/888888?text=ORG+Logo';
                 <span class="font-medium text-gray-800"><?= htmlspecialchars($organization['organisatienaam'] ?? 'Detail') ?></span>
             </nav>
         </div>
-
-        <?php if ($pageErrorMessage): // Toon foutmelding bovenaan als API faalt of ID ontbreekt 
-        ?>
+        <?php if ($pageErrorMessage): ?>
             <div class="alert alert-danger mx-4 mt-3" role="alert"><?= htmlspecialchars($pageErrorMessage) ?></div>
-        <?php endif; ?>
+        <?php else: ?>
 
-        <?php if ($organisationIdToView === null): // Geen ID meegegeven 
-        ?>
-            <div class="text-center p-5">
-                <h2 class="text-2xl text-red-600 mb-4">Organisatie ID ontbreekt</h2>
-                <p class="text-gray-600">U moet een organisatie ID opgeven in de URL (bijv. <code>organisatie.php?id=1</code>) om deze pagina te bekijken.</p>
-                <a href="dashboard.php" class="btn btn-primary mt-4">Terug naar Dashboard</a>
-            </div>
-        <?php else: // Wel een ID meegegeven, toon profiel 
-        ?>
-
-            <!-- Profiel Header Card (Bovenste deel) -->
+            <!-- Profiel Header -->
             <div class="profile-header-card">
                 <div class="profile-img-container">
                     <img src="<?= htmlspecialchars($orgLogoUrl) ?>" alt="Organisatie Logo">
@@ -447,7 +384,7 @@ $orgLogoUrl = 'https://via.placeholder.com/120/EEEEEE/888888?text=ORG+Logo';
                 </div>
             </div>
 
-            <!-- Detailsecties van de Organisatiegegevens (Read-only) -->
+            <!-- Algemene Gegevens -->
             <div class="section-content">
                 <div class="section-title">
                     Algemene Gegevens
@@ -455,7 +392,6 @@ $orgLogoUrl = 'https://via.placeholder.com/120/EEEEEE/888888?text=ORG+Logo';
                         <i class="fas fa-pencil-alt me-2"></i>Bewerken
                     </a>
                 </div>
-
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-4">
                     <div class="detail-item"><i class="fas fa-tag"></i>Naam: <strong><?= htmlspecialchars($organization['organisatienaam'] ?? 'N/A') ?></strong></div>
                     <div class="detail-item"><i class="fas fa-building"></i>KVK Nummer: <strong><?= htmlspecialchars($organization['kvkNummer'] ?? 'N.v.t.') ?></strong></div>
@@ -465,23 +401,21 @@ $orgLogoUrl = 'https://via.placeholder.com/120/EEEEEE/888888?text=ORG+Logo';
                     <div class="detail-item"><i class="fas fa-globe"></i>Land: <strong><?= htmlspecialchars($organization['land'] ?? 'N.v.t.') ?></strong></div>
                     <div class="detail-item"><i class="fas fa-power-off"></i>Actief: <strong><?= ($organization['isActive'] ?? 0) ? 'Ja' : 'Nee' ?></strong></div>
                     <div class="detail-item"><i class="fas fa-id-badge"></i>Entry ID: <strong><?= htmlspecialchars($organization['_entry_ID'] ?? 'N.v.t.') ?></strong></div>
-                    <div class="detail-item"><i class="fas fa-calendar-alt"></i>Entry Datum: <strong><?= htmlspecialchars((new DateTime($organization['_entry_Date'] ?? '1970-01-01'))->format('Y-m-d H:i') ?? 'N.v.t.') ?></strong></div>
+                    <div class="detail-item"><i class="fas fa-calendar-alt"></i>Entry Datum: <strong><?= htmlspecialchars((isset($organization['_entry_Date']) ? (new DateTime($organization['_entry_Date']))->format('Y-m-d H:i') : 'N.v.t.')) ?></strong></div>
                 </div>
             </div>
 
-            <!-- Optioneel: Sectie voor Contact Informatie (ala Jeremy Rose 'About' stijl) -->
+            <!-- Contactgegevens -->
             <div class="section-content">
-                <h2 class="section-title">Contact Informatie (Dummy)</h2>
+                <h2 class="section-title">Contact Informatie</h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-4">
-                    <div class="detail-item"><i class="fas fa-phone"></i>Telefoon: <strong>N.v.t.</strong></div>
-                    <div class="detail-item"><i class="fas fa-envelope"></i>E-mail: <strong>N.v.t.</strong></div>
-                    <div class="detail-item"><i class="fas fa-link"></i>Website: <strong>N.v.t.</strong></div>
+                    <div class="detail-item"><i class="fas fa-phone"></i>Telefoon: <strong><?= htmlspecialchars($organization['telefoon'] ?? 'N.v.t.') ?></strong></div>
+                    <div class="detail-item"><i class="fas fa-envelope"></i>E-mail: <strong><?= htmlspecialchars($organization['email'] ?? 'N.v.t.') ?></strong></div>
+                    <div class="detail-item"><i class="fas fa-link"></i>Website: <strong><?= htmlspecialchars($organization['website'] ?? 'N.v.t.') ?></strong></div>
                 </div>
             </div>
 
-        <?php endif; // Einde van else-tak voor $organisationIdToView === null 
-        ?>
-
+        <?php endif; ?>
     </div>
 </body>
 
