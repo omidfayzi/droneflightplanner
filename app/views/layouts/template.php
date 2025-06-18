@@ -2,12 +2,36 @@
 // /var/www/public/app/pages/template.php
 // Hoofdtemplate voor de Drone Vluchtvoorbereidingssysteem pagina's
 
-// Start sessie als deze nog niet is gestart
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Laad configuratie met foutafhandeling
+// --- Dynamisch de geselecteerde organisatie ophalen ---
+$selectedOrgId = $_SESSION['selected_organisation_id'] ?? null;
+$orgNaam = '';
+$orgLogoUrl = '/app/assets/images/default-org-logo.svg'; // Fallback/logo placeholder
+
+if ($selectedOrgId) {
+    // Pas hier de juiste backend-API-URL aan indien nodig
+    $apiUrl = 'http://devserv01.holdingthedrones.com:3006/organisaties/' . $selectedOrgId;
+    $ch = curl_init($apiUrl);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER => ['Accept: application/json'],
+        CURLOPT_TIMEOUT => 10,
+    ]);
+    $resp = curl_exec($ch);
+    curl_close($ch);
+
+    $data = @json_decode($resp, true);
+
+    if (is_array($data) && !isset($data['error'])) {
+        $orgNaam = $data['organisatienaam'] ?? '';
+        $orgLogoUrl = (!empty($data['logoUrl'])) ? $data['logoUrl'] : $orgLogoUrl;
+    }
+}
+
+// --- Rest van je config inladen zoals jij had ---
 $configPath = __DIR__ . '/../../config/config.php';
 if (file_exists($configPath)) {
     $config = require_once $configPath;
@@ -90,7 +114,7 @@ $env = $config['env'] ?? [
 // Haal pagina-specifieke of standaardvariabelen met veilige fallbacks
 $showHeader = $showHeader ?? $defaults['showHeader'] ?? 1;
 $userName = $_SESSION['user']['first_name'] ?? $defaults['userName'] ?? 'Onbekend';
-$org = $_SESSION['org'] ?? $defaults['org'] ?? '';
+// *** ORG IS NU OVERBODIG DOOR DYNAMISCHE NAAM! ***
 $headTitle = $headTitle ?? $defaults['headTitle'] ?? 'Drone Vluchtvoorbereidingssysteem';
 $gobackUrl = $gobackUrl ?? $defaults['gobackUrl'] ?? 0;
 $rightAttributes = $rightAttributes ?? $defaults['rightAttributes'] ?? 0;
@@ -132,7 +156,6 @@ if (is_dir($componentsDir)) {
     <script src="/src/app/assets/scripts/global120.js"></script>
     <script src="/src/app/assets/scripts/idin.js"></script>
 
-
     <style>
         .bg-custom-gray {
             background-color: #313234;
@@ -147,42 +170,88 @@ if (is_dir($componentsDir)) {
 
 <body class="bg-gray-50 font-sans">
     <?php if ($showHeader == 1): ?>
-        <div class="w-64 sm:h-screen h-16 fixed bottom-0 sm:top-0 z-40 border-r border-gray-200 shadow-xl bg-custom-gray">
+
+        <div class="w-64 sm:h-screen h-16 fixed bottom-0 sm:top-0 z-40 border-r border-gray-800 shadow-xl bg-gradient-to-b from-gray-900 to-gray-800">
             <div class="flex flex-col h-full">
-                <!-- Logo Section -->
-                <div class="w-full p-6 border-b border-gray-700">
+                <!-- Logo Sectie -->
+                <div class="w-full p-7 bg-gray-800 border-b border-gray-700">
                     <a href="/app/views/dashboard.php" class="block hover:opacity-90 transition-opacity">
-                        <img src="/app/assets/images/holding_the_drone_logo.png"
-                            alt="Drone Control"
-                            class="h-28 w-auto object-contain mx-auto p-2.5">
+                        <div class="flex items-center justify-center space-x-3">
+                            <div class="relative">
+                                <div class="w-12 h-12 rounded-full bg-gradient-to-r from-blue-600 to-blue-800 flex items-center justify-center text-white text-2xl overflow-hidden">
+                                    <img src="<?php echo htmlspecialchars($orgLogoUrl); ?>" alt="Organisatie Logo" class="w-full h-full object-cover">
+                                </div>
+                                <div class="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-green-500 flex items-center justify-center text-white text-xs">
+                                    <i class="fa-solid fa-bolt"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="text-gray-100 font-montserrat font-bold text-xl tracking-wide">
+                                    <?php echo $orgNaam ? htmlspecialchars($orgNaam) : "DRONE"; ?>
+                                </div>
+                                <div class="text-blue-400 font-montserrat font-medium text-sm tracking-wider">
+                                    FLIGHT PLANNER
+                                </div>
+                            </div>
+                        </div>
                     </a>
                 </div>
 
-                <!-- Include Navigatie Component -->
-                <?php require_once __DIR__ . '/../../components/nav.php'; ?>
+                <!-- Navigatie Sectie -->
+                <div class="p-2 flex-1 overflow-y-auto bg-gray-900">
+                    <?php require_once __DIR__ . '/../../components/nav.php'; ?>
+                </div>
 
-                <!-- Profile Section -->
-                <div class="mt-auto w-full p-4 border-t border-gray-700 flex justify-center items-center my-4">
-                    <div class="flex items-center space-x-4">
-                        <a href="/../profile.php">
+                <!-- Profiel Sectie -->
+                <div class="w-full p-2 bg-gray-900 border-t border-gray-700">
+                    <div class="flex items-center space-x-4 bg-gray-800 p-3 rounded-lg">
+                        <a href="/../profile.php" class="flex-shrink-0">
                             <div class="relative">
-                                <img src="/app/assets/images/default-avatar.svg"
-                                    class="w-10 h-10 rounded-full border-2 border-gray-600 cursor-pointer"
-                                    alt="Profile">
-                                <div class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-900"></div>
+                                <div class="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-blue-700 flex items-center justify-center text-white font-montserrat font-bold">
+                                    <?php echo strtoupper(substr($userName, 0, 1)); ?>
+                                </div>
+                                <div class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-800"></div>
                             </div>
                         </a>
-                        <div>
-                            <p class="text-sm font-medium text-gray-100"><?php echo htmlspecialchars($userName); ?></p>
-                            <p class="text-xs text-gray-400"><?php echo htmlspecialchars($org); ?></p>
+                        <div class="min-w-0">
+                            <p class="text-sm font-medium text-gray-200 font-montserrat truncate">
+                                <?php echo htmlspecialchars($userName ?? ""); ?>
+                            </p>
+                            <p class="text-xs text-gray-400 font-open-sans truncate">
+                                <?php
+                                // Dynamisch de gekozen functie tonen, fallback indien niet gezet
+                                echo isset($_SESSION['selected_function_name']) && $_SESSION['selected_function_name']
+                                    ? htmlspecialchars($_SESSION['selected_function_name'])
+                                    : 'Geen rol geselecteerd';
+                                ?>
+                            </p>
                         </div>
+                        <a href="/logout.php" class="ml-auto text-gray-400 hover:text-red-400 transition-colors">
+                            <i class="fa-solid fa-right-from-bracket"></i>
+                        </a>
                     </div>
                 </div>
             </div>
 
-            <div class="sm:hidden absolute bottom-0 w-full bg-gray-900 border-t border-gray-700">
-                <!-- Include Mobiele Navigatie Component -->
-                <?php require_once __DIR__ . '/../../components/nav.php'; ?>
+            <!-- Mobiele navigatiebalk (onderaan) -->
+            <div class="sm:hidden absolute bottom-0 w-full bg-gray-900 border-t border-gray-800 shadow-[0_-4px_8px_rgba(0,0,0,0.4)]">
+                <div class="flex justify-around items-center h-16">
+                    <?php
+                    $mobileMenuItems = array_slice($menuItems, 0, 4);
+                    foreach ($mobileMenuItems as $item):
+                        $isActive = $_SERVER['REQUEST_URI'] === $item['url']
+                            ? 'text-blue-400'
+                            : 'text-gray-500';
+                    ?>
+                        <a href="<?php echo htmlspecialchars($item['url']); ?>"
+                            class="p-3 <?php echo $isActive; ?> hover:text-blue-300 transition-colors relative group">
+                            <i class="fa-solid <?php echo $item['icon']; ?> text-2xl"></i>
+                            <span class="absolute bottom-0 left-1/2 transform -translate-x-1/2 text-xs font-montserrat font-medium text-gray-300 group-hover:text-blue-300 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-gray-800 px-2 py-1 rounded shadow-lg">
+                                <?php echo htmlspecialchars($item['text']); ?>
+                            </span>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
             </div>
         </div>
 
