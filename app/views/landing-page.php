@@ -141,65 +141,154 @@ $baseWebPathForviews = '/app/views/'; // Pas dit aan als je bestanden op een and
 $organisatieRegistratieUrl = $baseWebPathForviews . 'organisatieRegistratie.php';
 
 
-$bodyContent = "
-    <div class='fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50'>
-        <div class='w-[80%] bg-white rounded-xl p-5 max-w-xl'>
-            <h1 class='pb-4 text-2xl font-bold text-gray-800 text-center'>Selecteer uw Rol</h1>
+$backgroundImageUrl = '/app/assets/images/background.jpg';
 
-            <!-- Sectie 1: Bestaande Organisatie Kiezen -->
-            <div class='mb-6 p-4 border rounded-lg bg-gray-50'>
-                <h2 class='pb-3 text-xl font-semibold text-gray-700'>Bestaande Organisatie Gebruiken</h2>
-                <p class='text-sm text-gray-600 mb-4'>Log in bij een organisatie die reeds geregistreerd is.</p>
+$bodyContent = "
+    <!-- Modal op voorgrond -->
+    <div class='fixed inset-0 z-50 flex items-center justify-center p-4'>
+        <!-- Achtergrondafbeelding -->
+    <div class='fixed inset-0 z-0'>
+        <img src='{$backgroundImageUrl}' alt='Background Image' class='w-full h-full object-cover bg-img' />
+    </div>
+        <div class='relative w-full max-w-5xl bg-white rounded-2xl shadow-xl overflow-hidden z-50'>
+            <!-- Gradient header -->
+            <div class='h-2 bg-gradient-to-r from-blue-600 to-green-500'></div>
+            
+            <div class='p-10'>
+                <div class='text-center mb-12'>
+                    <h1 class='text-4xl font-bold text-gray-900 mb-4'>Selecteer uw Rol</h1>
+                    <p class='text-lg text-gray-600'>Kies hoe u wilt werken in het Drone Flight Planner systeem</p>
+                </div>
                 
-                <label for='orgSelect' class='block text-gray-700 text-sm font-bold mb-1'>Kies een organisatie:</label>
-                <select id='orgSelect' class='rounded-xl w-full mb-3 p-2 bg-gray-200 border-gray-300 focus:ring focus:ring-blue-500 focus:border-blue-500'>
-                    <option value=''>Selecteer organisatie</option>
-                    <option value='0'>" . htmlspecialchars($currentUserName) . " (Individueel Account)</option>";
+                <div class='grid grid-cols-1 md:grid-cols-2 gap-12'>
+                    <!-- Bestaande Organisatie Sectie -->
+                    <div class='bg-gray-50 p-8 rounded-xl border border-gray-200'>
+                        <div class='flex items-center mb-6'>
+                            <div class='bg-blue-100 p-3 rounded-full mr-3'>
+                                <i class='fas fa-building text-blue-600 text-xl'></i>
+                            </div>
+                            <h2 class='text-2xl font-semibold text-gray-800'>Bestaande Organisatie</h2>
+                        </div>
+                        
+                        <p class='text-gray-600 mb-6'>Log in bij een organisatie die reeds geregistreerd is</p>
+                        
+                        <div class='space-y-6'>
+                            <div>
+                                <label class='block text-gray-700 font-medium mb-2 text-lg'>Organisatie</label>
+                                <div class='relative'>
+                                    <select id='orgSelect' class='w-full p-4 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg'>
+                                        <option value=''>Selecteer organisatie</option>
+                                        <option value='0'>" . htmlspecialchars($currentUserName) . " (Individueel Account)</option>";
+
 foreach ($organisations as $org) {
     $bodyContent .= "<option value='" . htmlspecialchars($org['id']) . "'>" . htmlspecialchars($org['name']) . "</option>";
 }
-$bodyContent .= "
-                </select>
 
-                <label for='functionSelect' class='block text-gray-700 text-sm font-bold mb-1'>Kies uw functie:</label>
-                <select id='functionSelect' class='rounded-xl w-full mb-4 p-2 bg-gray-200 border-gray-300 focus:ring focus:ring-blue-500 focus:border-blue-500'>
-                    <option value='' disabled selected>Selecteer uw functie</option>";
+$bodyContent .= "
+                                    </select>
+                                    <div class='pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700'>
+                                        <i class='fas fa-chevron-down'></i>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label class='block text-gray-700 font-medium mb-2 text-lg'>Functie</label>
+                                <div class='relative'>
+                                    <select id='functionSelect' class='w-full p-4 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg'>
+                                        <option value='' disabled selected>Selecteer uw functie</option>";
+
 foreach ($functions as $func) {
     $bodyContent .= "<option value='" . htmlspecialchars($func['id']) . "'>" . htmlspecialchars($func['name']) . "</option>";
 }
+
 $bodyContent .= "
-                </select>
-
-                <button
-                    type='button'
-                    onclick='confirmSelection()'
-                    class='text-white bg-blue-600 hover:bg-blue-700 rounded-xl w-full py-3 transition-colors'
-                >Bevestigen</button>
-            </div>
-
-            <!-- Scheidingslijn of -tekst -->
-            <div class='relative my-6'>
-                <div class='absolute inset-0 flex items-center' aria-hidden='true'>
-                    <div class='w-full border-t border-gray-300'></div>
+                                    </select>
+                                    <div class='pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700'>
+                                        <i class='fas fa-chevron-down'></i>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <button
+                                type='button'
+                                onclick='confirmSelection()'
+                                class='w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium text-lg transition-colors flex items-center justify-center gap-3'
+                            >
+                                <i class='fas fa-check-circle'></i> Bevestigen
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Nieuwe Organisatie Sectie -->
+                    <div class='bg-gray-50 p-8 rounded-xl border border-gray-200'>
+                        <div class='flex items-center mb-6'>
+                            <div class='bg-green-100 p-3 rounded-full mr-3'>
+                                <i class='fas fa-plus-circle text-green-600 text-xl'></i>
+                            </div>
+                            <h2 class='text-2xl font-semibold text-gray-800'>Nieuwe Organisatie</h2>
+                        </div>
+                        
+                        <p class='text-gray-600 mb-6'>Registreer een compleet nieuwe organisatie in het systeem</p>
+                        
+                        <ul class='space-y-4 mb-8'>
+                            <li class='flex items-start'>
+                                <i class='fas fa-check-circle text-green-500 mt-1.5 mr-3 text-xl'></i>
+                                <span class='text-lg'>Voeg uw bedrijf of organisatie toe</span>
+                            </li>
+                            <li class='flex items-start'>
+                                <i class='fas fa-check-circle text-green-500 mt-1.5 mr-3 text-xl'></i>
+                                <span class='text-lg'>Beheer meerdere dronevluchtprojecten</span>
+                            </li>
+                            <li class='flex items-start'>
+                                <i class='fas fa-check-circle text-green-500 mt-1.5 mr-3 text-xl'></i>
+                                <span class='text-lg'>Nodig teamleden uit</span>
+                            </li>
+                        </ul>
+                        
+                        <button
+                            type='button'
+                            onclick='window.location.href=\"{$organisatieRegistratieUrl}\"'
+                            class='w-full py-4 bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium text-lg transition-colors flex items-center justify-center gap-3'
+                        >
+                            <i class='fas fa-plus'></i> Nieuwe Organisatie
+                        </button>
+                    </div>
                 </div>
-                <div class='relative flex justify-center text-sm'>
-                    <span class='px-2 bg-white text-gray-500'>OF</span>
+                
+                <div class='mt-12 pt-6 border-t border-gray-200 text-center text-gray-500 text-lg'>
+                    <p>U kunt altijd van organisatie wisselen via uw profielinstellingen</p>
                 </div>
             </div>
-
-            <!-- Sectie 2: Nieuwe Organisatie Toevoegen -->
-            <div class='p-4 border rounded-lg bg-gray-50'>
-                <h2 class='pb-3 text-xl font-semibold text-gray-700'>Nieuwe Organisatie Registreren</h2>
-                <p class='text-sm text-gray-600 mb-4'>Registreer een compleet nieuwe organisatie in het systeem.</p>
-                <button
-                    type='button'
-                    onclick='window.location.href=\"{$organisatieRegistratieUrl}\"'
-                    class='text-white bg-green-600 hover:bg-green-700 rounded-xl w-full py-3 transition-colors'
-                >Nieuwe Organisatie Toevoegen</button>
-            </div>
-
         </div>
     </div>
+    
+    <style>
+        body {
+            font-family: 'Montserrat', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            postion: relative;
+        }
+
+        .bg-img {
+            filter: blur(5px); 
+            brightness(0.7);
+            margin-right: 300px;
+            postion: absolute;
+        }
+        
+        @media (max-width: 768px) {
+            .fixed.inset-0 {
+                padding: 1rem;
+            }
+            .relative.w-full {
+                max-width: 100%;
+            }
+        }
+    </style>
 ";
 
 require_once __DIR__ . '/layouts/template.php';
