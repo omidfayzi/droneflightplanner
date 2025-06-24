@@ -1,83 +1,111 @@
 <?php
 // FILE: /var/www/public/app/views/dashboard.php
-// Dashboard-pagina voor het Drone Vluchtvoorbereidingssysteem
+// Dashboard-pagina voor het Drone Vluchtvoorbereidingssysteem - MET DYNAMISCHE DATA
 
 session_start();
-// Laad benodigde configuratie bestanden.
-// Zorg ervoor dat deze paden correct zijn in jouw projectstructuur!
 require_once __DIR__ . '/../../config/config.php';
-// Als 'functions.php' essentiële functies bevat (zoals fetchPropPrefTxt of algemene DB-helpers),
-// moet deze ook worden geinclude. Zo niet, verwijder deze regel of pas aan.
-// require_once __DIR__ . '/../../functions.php'; 
+require_once __DIR__ . '/../../functions.php';
+
+// Valideren van de gebruikersstatus
+if (!isset($_SESSION['user']['id'])) {
+    $_SESSION['form_error'] = "U moet ingelogd zijn om het dashboard te bekijken.";
+    header("Location: landing-page.php");
+    exit;
+}
+
+// Sessie-gegevens
+$selectedOrgId = $_SESSION['selected_organisation_id'] ?? null;
+$loggedInUserId = $_SESSION['user']['id'] ?? null;
 
 // --- API URLs configureren ---
-// Verzeker dat MAIN_API_URL gedefinieerd is in config/config.php
-// Dit is de basis-URL voor jouw Node.js backend
 if (!defined('MAIN_API_URL')) {
-    define('MAIN_API_URL', 'https://api2.droneflightplanner.nl/');
+    define('MAIN_API_URL', 'https://api2.droneflightplanner.nl');
 }
 $mainApiBaseUrl = MAIN_API_URL;
+$flightsApiUrl = $mainApiBaseUrl . '/vluchten';
 
-// Endpoint voor het ophalen van vluchten van JOUW BACKEND (Node.js/Express)
-$flightsApiUrl = $mainApiBaseUrl . 'vluchten'; // Dit is nu correct om naar vluchten.js te wijzen
+// API-hulpfunctie
+function callMainApi(string $url, string $method = 'GET', array $payload = []): array
+{
+    $ch = curl_init($url);
+    $options = [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER => ['Accept: application/json'],
+        CURLOPT_TIMEOUT => 20,
+    ];
 
-// --- Vluchten en statistieken ophalen ---
-$recentFlights = [];
-$stats = [ // Standaard statistieken, worden gevuld of blijven 0
-    'active_flights' => 0,
-    'pending_approval' => 0,
-    'total_flights' => 0
-];
-
-$ch = curl_init($flightsApiUrl); // Initialiseer cURL sessie
-curl_setopt_array($ch, [
-    CURLOPT_RETURNTRANSFER => true, // Retourneer de transfer als een string in plaats van direct uit te voeren
-    CURLOPT_TIMEOUT => 10,         // Maximale tijd in seconden om de server respons te krijgen
-    CURLOPT_HTTPHEADER => ['Accept: application/json'] // Specificeer dat we JSON verwachten
-]);
-
-$flightsResponse = curl_exec($ch); // Voer de cURL sessie uit
-$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE); // Krijg de HTTP statuscode
-curl_close($ch); // Sluit de cURL sessie
-
-// Verwerk de respons
-if ($httpCode === 200 && $flightsResponse !== false) {
-    $flightsData = json_decode($flightsResponse, true); // Decodeer JSON respons naar een PHP array
-    if (is_array($flightsData)) {
-        $recentFlights = $flightsData;
-        // Basale statistieken berekenen van de opgehaalde vluchten
-        $stats['total_flights'] = count($recentFlights);
-
-        // Simuleer actieve/wachtende goedkeuring als deze niet in je database worden beheerd.
-        // Anders, filter hier op je status-kolom in $recentFlights.
-        $stats['active_flights'] = count(array_filter($recentFlights, fn($f) => ($f['status'] ?? 'Gepland') === 'Lopend')); // Aanname: status-kolom in DB
-        $stats['pending_approval'] = count(array_filter($recentFlights, fn($f) => ($f['status'] ?? 'Gepland') === 'Wachtend op goedkeuring'));
+    if ($method !== 'GET') {
+        $options[CURLOPT_HTTPHEADER][] = 'Content-Type: application/json';
+        $options[CURLOPT_POSTFIELDS] = json_encode($payload);
+        if ($method === 'PUT') $options[CURLOPT_CUSTOMREQUEST] = 'PUT';
+        if ($method === 'DELETE') $options[CURLOPT_CUSTOMREQUEST] = 'DELETE';
+        if ($method === 'POST') $options[CURLOPT_POST] = true;
     }
-} else {
-    // Log eventuele fouten bij het ophalen van vluchten
-    error_log("DASHBOARD_FETCH_ERROR: Fout bij ophalen vluchten: HTTP $httpCode. Respons: " . ($flightsResponse ?: 'Empty response body'));
-    // Optionally, set an error message for the user in the UI if needed
-    // $dashboardError = "Kan vluchten niet laden. Probeer later opnieuw.";
+
+    if (isset($_SESSION['user']['auth_token'])) {
+        $options[CURLOPT_HTTPHEADER][] = 'Authorization: Bearer ' . $_SESSION['user']['auth_token'];
+    }
+
+    curl_setopt_array($ch, $options);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($httpCode >= 400) {
+        $decodedError = json_decode($response, true);
+        return ['error' => $decodedError['message'] ?? "API-fout ($httpCode)"];
+    }
+
+    return json_decode($response, true) ?: [];
 }
 
-// --- Pagin-specifieke variabelen voor lay-out template ---
-$headTitle = "Dashboard";
-// Gebruikersnaam en organisatie uit sessie, worden meestal gezet na login
-$userName = $_SESSION['user']['first_name'] ?? 'Onbekend';
-$org = $_SESSION['org'] ?? '';
-$gobackUrl = 0; // Geen terugknop nodig voor het dashboard
-$rightAttributes = 0; // Geen SSO-knop, alleen profielicoon (aanpassen aan je header/template)
+// --- Vluchten ophalen via API ---
+$recentFlights = [];
+$apiError = null;
 
-// Eventuele functieaanroep die jouw template verwacht. 
-// De `fetchPropPrefTxt(1)` in jouw originele code: deze line moet je herstellen
-// als die functie daadwerkelijk een output genereert die in je header/template komt.
-// Anders, verwijder of commentarieer deze lijn.
-// echo fetchPropPrefTxt(1); 
+// Bouw API-URL met filters
+$queryParams = [];
+if ($selectedOrgId) {
+    $queryParams[] = 'organisatieId=' . $selectedOrgId;
+} else {
+    $queryParams[] = 'pilootId=' . $loggedInUserId;
+}
 
-// --- Definitie van de BODY CONTENT voor de template.php ---
+$flightsApiUrlWithFilter = $flightsApiUrl . '?' . implode('&', $queryParams);
+$flightsResponse = callMainApi($flightsApiUrlWithFilter, 'GET');
+
+if (isset($flightsResponse['error'])) {
+    $apiError = $flightsResponse['error'];
+    error_log("Dashboard: Fout bij ophalen vluchten: " . $apiError);
+} elseif (is_array($flightsResponse)) {
+    $recentFlights = $flightsResponse;
+}
+
+// Sorteer vluchten op datum (nieuwste eerst)
+usort($recentFlights, function ($a, $b) {
+    return strtotime($b['startDatumTijd'] ?? '') <=> strtotime($a['startDatumTijd'] ?? '');
+});
+
+// Bereken statistieken
+$stats = [
+    'total_flights' => count($recentFlights),
+    'active_flights' => count(array_filter($recentFlights, fn($f) => ($f['status'] ?? '') === 'Lopend')),
+    'pending_approval' => count(array_filter($recentFlights, fn($f) => ($f['status'] ?? '') === 'Gepland'))
+];
+
+// Dashboard content
 $bodyContent = "
     <div class='h-[83.5vh] bg-gray-100 shadow-md rounded-tl-xl w-13/15'>
-        <div class='p-6 overflow-y-auto max-h-[calc(90vh-200px)]'>
+        <div class='p-6 overflow-y-auto max-h-[calc(90vh-200px)]'>";
+
+if ($apiError) {
+    $bodyContent .= "
+        <div class='alert alert-danger mb-4' role='alert'>
+            Fout bij laden vluchten: " . htmlspecialchars($apiError) . "
+        </div>";
+}
+
+$bodyContent .= "
             <!-- KPI Grid voor Vluchtstatistieken -->
             <div class='grid grid-cols-1 md:grid-cols-3 gap-6 mb-8'>
                 <div class='bg-white p-6 rounded-xl shadow hover:shadow-lg transition'>
@@ -94,7 +122,7 @@ $bodyContent = "
                 <div class='bg-white p-6 rounded-xl shadow hover:shadow-lg transition'>
                     <div class='flex justify-between items-center'>
                         <div>
-                            <p class='text-sm text-gray-500 mb-1'>Wachtend op Goedkeuring</p>
+                            <p class='text-sm text-gray-500 mb-1'>Geplande Vluchten</p>
                             <p class='text-3xl font-bold text-gray-800'>" . htmlspecialchars($stats['pending_approval']) . "</p>
                         </div>
                         <div class='w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center'>
@@ -119,7 +147,6 @@ $bodyContent = "
             <div class='bg-white rounded-xl shadow overflow-hidden'>
                 <div class='p-6 border-b border-gray-200 flex justify-between items-center'>
                     <h3 class='text-xl font-semibold text-gray-800'>Recente Operaties</h3>
-                    <!-- Link naar Nieuwe Vlucht planning (Stap 1) -->
                     <a href='/frontend/pages/flight-planning/step1.php' class='flex items-center text-blue-600 hover:text-blue-800 transition'>
                         <i class='fa-solid fa-plus mr-2'></i> Nieuwe Vlucht
                     </a>
@@ -131,10 +158,10 @@ $bodyContent = "
                                 <th class='p-4 text-left text-gray-600'>ID</th>
                                 <th class='p-4 text-left text-gray-600'>Vluchtnaam</th>
                                 <th class='p-4 text-left text-gray-600'>Type</th>
-                                <th class='p-4 text-left text-gray-600'>Datum</th>
+                                <th class='p-4 text-left text-gray-600'>Datum/tijd</th>
+                                <th class='p-4 text-left text-gray-600'>Locatie</th>
                                 <th class='p-4 text-left text-gray-600'>Piloot</th>
-                                <th class='p-4 text-left text-gray-600'>SORA ID</th>
-                                <th class='p-4 text-left text-gray-600'>SORA Versie</th>
+                                <th class='p-4 text-left text-gray-600'>Drone</th>
                                 <th class='p-4 text-left text-gray-600'>Status</th>
                                 <th class='p-4 text-left text-gray-600'>Acties</th>
                             </tr>
@@ -142,59 +169,67 @@ $bodyContent = "
                         <tbody class='divide-y divide-gray-200 text-sm'>";
 
 if (empty($recentFlights)) {
-    $bodyContent .= "
-        <tr><td colspan='9' class='p-4 text-center text-gray-500'>Geen vluchten gevonden in de database. Start een nieuwe vlucht!</td></tr>
-    ";
+    $bodyContent .= "<tr><td colspan='9' class='p-4 text-center text-gray-500'>Geen vluchten gevonden</td></tr>";
 } else {
     foreach ($recentFlights as $flight) {
-        // Formatteer de flight_date van de database (komt als ISO8601 string van Node.js)
-        $flightDateObj = new DateTime($flight['flight_date']);
-        $formattedFlightDate = $flightDateObj->format('d-m-Y'); // Formatteer naar Nederlandse datumweergave
+        $flightId = $flight['id'] ?? 'N/A';
+        $flightName = htmlspecialchars($flight['vluchtNaam'] ?? 'Geen naam');
+        $flightType = htmlspecialchars($flight['typeNaam'] ?? ($flight['vluchtTypeId'] ?? 'N/A'));
+        $pilotName = htmlspecialchars($flight['pilootNaam'] ?? ($flight['pilootId'] ?? 'N/A'));
+        $droneName = htmlspecialchars($flight['droneNaam'] ?? ($flight['droneId'] ?? 'N/A'));
+        $location = htmlspecialchars($flight['locatie'] ?? 'Onbekend');
 
-        // Simuleer een status. In een echt systeem komt dit uit een 'status' kolom in je DB.
-        $displayStatus = "Gepland"; // Standaard status als er geen echte status kolom is
+        // Datum/tijd formatteren
+        $formattedDateTime = 'Onbekend';
+        if (!empty($flight['startDatumTijd'])) {
+            try {
+                $date = new DateTime($flight['startDatumTijd']);
+                $formattedDateTime = $date->format('d-m-Y H:i');
+            } catch (Exception $e) {
+                $formattedDateTime = 'Ongeldige datum';
+            }
+        }
 
-        $statusClass = match ($displayStatus) { // Tailwind classes voor statusbadges
-            'Afgerond' => 'bg-green-100 text-green-800',
-            'Lopend' => 'bg-yellow-100 text-yellow-800',
-            'Gepland' => 'bg-blue-100 text-blue-800',
-            'Mislukt' => 'bg-red-100 text-red-800',
-            default => 'bg-gray-100 text-gray-800'
-        };
+        // Status styling
+        $status = $flight['status'] ?? 'Onbekend';
+        $statusClass = 'bg-gray-100 text-gray-800'; // Default
 
-        // Kolommen direct uit de $flight array (komen overeen met je DB-schema en Node.js output)
-        $flightId = htmlspecialchars($flight['id'] ?? 'N/A');
-        $flightName = htmlspecialchars($flight['flight_name'] ?? 'N/A');
-        $flightType = htmlspecialchars($flight['flight_type'] ?? 'N/A');
-        $flightPilot = htmlspecialchars($flight['flight_pilot'] ?? 'N/A');
-        $soraAnalysisId = htmlspecialchars($flight['sora_analysis_id'] ?? 'N/A');
-        $soraVersion = htmlspecialchars($flight['sora_version'] ?? 'N/A');
-        // $location = "Lat: " . htmlspecialchars($flight['latitude'] ?? 'N/A') . ", Lon: " . htmlspecialchars($flight['longitude'] ?? 'N/A'); // Als je latitude/longitude kolommen hebt
-        $location = "N/A"; // Als er geen specifieke locatie kolom is
+        switch ($status) {
+            case 'Gepland':
+                $statusClass = 'bg-blue-100 text-blue-800';
+                break;
+            case 'Lopend':
+                $statusClass = 'bg-yellow-100 text-yellow-800';
+                break;
+            case 'Afgerond':
+                $statusClass = 'bg-green-100 text-green-800';
+                break;
+            case 'Geannuleerd':
+                $statusClass = 'bg-red-100 text-red-800';
+                break;
+        }
 
         $bodyContent .= "
-                                <tr class='hover:bg-gray-50 transition'>
-                                    <td class='p-4 font-medium text-gray-800'>" . $flightId . "</td>
-                                    <td class='p-4 text-gray-600'>" . $flightName . "</td>
-                                    <td class='p-4 text-gray-600'>" . $flightType . "</td>
-                                    <td class='p-4 text-gray-600'>" . $formattedFlightDate . "</td>
-                                    <td class='p-4 text-gray-600'>" . $flightPilot . "</td>
-                                    <td class='p-4 text-gray-600'>" . $soraAnalysisId . "</td>
-                                    <td class='p-4 text-gray-600'>" . $soraVersion . "</td>
-                                    <td class='p-4'>
-                                        <span class='$statusClass px-3 py-1 rounded-full text-sm font-medium'>" . htmlspecialchars($displayStatus) . "</span>
-                                    </td>
-                                    <td class='p-4 text-right'>
-                                        <a href='/frontend/pages/flight-planning/step1.php?edit_flight_id=" . $flightId . "' title='Bewerk vlucht' class='text-gray-600 hover:text-gray-800 transition'>
-                                            <i class='fa-solid fa-pencil'></i>
-                                        </a>
-                                        <button class='text-gray-600 hover:text-gray-800 transition ml-2'>
-                                            <i class='fa-solid fa-ellipsis-vertical'></i>
-                                        </button>
-                                    </td>
-                                </tr>";
+            <tr class='hover:bg-gray-50 transition'>
+                <td class='p-4 font-medium text-gray-800'>$flightId</td>
+                <td class='p-4 text-gray-600'>$flightName</td>
+                <td class='p-4 text-gray-600'>$flightType</td>
+                <td class='p-4 text-gray-600'>$formattedDateTime</td>
+                <td class='p-4 text-gray-600'>$location</td>
+                <td class='p-4 text-gray-600'>$pilotName</td>
+                <td class='p-4 text-gray-600'>$droneName</td>
+                <td class='p-4'>
+                    <span class='$statusClass px-3 py-1 rounded-full text-sm font-medium'>$status</span>
+                </td>
+                <td class='p-4 text-right'>
+                    <a href='#' title='Vlucht details bekijken' class='text-gray-600 hover:text-gray-800 transition'>
+                        <i class='fa-solid fa-circle-info'></i>
+                    </a>
+                </td>
+            </tr>";
     }
 }
+
 $bodyContent .= "
                         </tbody>
                     </table>
@@ -204,7 +239,6 @@ $bodyContent .= "
     </div>
 ";
 
-// Inclusie van header-component en template.php. 
-// Deze paden zijn relatief vanaf de locatie van dashboard.php: /var/www/public/app/views/
+// Inclusie van header-component en template.php
 require_once __DIR__ . '/../components/header.php';
 require_once __DIR__ . '/layouts/template.php';

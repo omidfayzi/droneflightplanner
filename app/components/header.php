@@ -3,7 +3,6 @@
 
 // Veiligheid bij null
 $title   = isset($headTitle) && $headTitle !== null ? $headTitle : 'Dashboard';
-$orgName = isset($org)       && $org       !== null ? $org       : 'Organisatie A';
 ?>
 <!--
     - sm:ml-64 zorgt dat de header vanaf sm naast de sidebar staat
@@ -19,7 +18,6 @@ $orgName = isset($org)       && $org       !== null ? $org       : 'Organisatie 
         </h1>
         <p class="text-sm text-gray-500" style="font-family: 'Open Sans', sans-serif;">
             Laatste update: <span class="font-semibold text-gray-700">15 minuten geleden</span>,
-            <span class="text-blue-500"><?= htmlspecialchars($orgName, ENT_QUOTES, 'UTF-8'); ?></span>
         </p>
     </div>
 
