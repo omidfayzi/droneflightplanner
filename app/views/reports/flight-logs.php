@@ -72,7 +72,16 @@ if (!empty($flightLogs) && is_array($flightLogs)) {
         $bodyContent .= "<tr class='hover:bg-gray-50 transition'>";
         foreach ($kolommen as $kolom) {
             $waarde = array_key_exists($kolom, $vlucht) ? $vlucht[$kolom] : '';
-            if (is_bool($waarde)) $waarde = $waarde ? 'Ja' : 'Nee';
+
+            // Oplossing voor "Array to string conversion" waarschuwing
+            if (is_array($waarde)) {
+                $waarde = implode(', ', $waarde);
+            } elseif (is_bool($waarde)) {
+                $waarde = $waarde ? 'Ja' : 'Nee';
+            } elseif ($waarde === null) {
+                $waarde = '';
+            }
+
             $bodyContent .= "<td class='px-4 py-3 whitespace-nowrap'>" . htmlspecialchars((string)$waarde) . "</td>";
         }
         $id = $vlucht['DFPPVluchtId'] ?? $vlucht['id'] ?? '';
@@ -138,9 +147,16 @@ require_once __DIR__ . '/../layouts/template.php';
         if (flightEntry && flightDetailsModal) {
             let html = '<table class="w-full text-sm">';
             Object.entries(flightEntry).forEach(([key, value]) => {
+                // Oplossing voor array-waarden in JavaScript
+                let displayValue = value;
+                if (Array.isArray(value)) {
+                    displayValue = value.join(', ');
+                } else if (value === null) {
+                    displayValue = '';
+                }
                 html += `<tr>
                     <td class='pr-4 font-medium text-gray-600'>${escapeHTML(key)}</td>
-                    <td>${escapeHTML(value)}</td>
+                    <td>${escapeHTML(displayValue)}</td>
                 </tr>`;
             });
             html += '</table>';
