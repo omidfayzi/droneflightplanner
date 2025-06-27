@@ -49,7 +49,7 @@ function isSubmenuActive($submenu)
 }
 ?>
 
-<nav class="flex-1 flex flex-col px-4 py-6 space-y-2" id="main-nav">
+<nav class="flex-1 flex flex-col px-4 py-6 space-y-1" id="main-nav">
     <?php foreach ($menuItems as $item): ?>
         <?php if (isset($item['submenu'])): ?>
             <?php
@@ -59,20 +59,20 @@ function isSubmenuActive($submenu)
             <div class="nav-group <?php echo $submenuOpen; ?>">
                 <button class="nav-header w-full flex items-center justify-between p-4 rounded-lg transition-colors duration-300 <?php echo $isActive; ?>">
                     <div class="flex items-center space-x-4">
-                        <i class="fa-solid <?php echo $item['icon']; ?> ml-8 text-xl w-6 text-center"></i>
+                        <i class="fa-solid <?php echo $item['icon']; ?> text-xl w-6 text-center"></i>
                         <span class="text-base font-medium"><?php echo htmlspecialchars($item['text']); ?></span>
                     </div>
                     <i class="fa-solid fa-chevron-down text-xs transform transition-transform duration-300 nav-arrow"></i>
                 </button>
 
-                <div class="nav-submenu ml-8 mt-1">
+                <div class="nav-submenu mt-1 ml-6 border-l border-gray-700 pl-3">
                     <?php foreach ($item['submenu'] as $subItem): ?>
                         <?php
-                        $isActiveSub = isActiveUrl($subItem['url']) ? 'active-menu' : 'text-gray-300 hover:bg-gray-700/50';
+                        $isActiveSub = isActiveUrl($subItem['url']) ? 'active-menu' : 'text-gray-300';
                         ?>
                         <a href="<?php echo htmlspecialchars($subItem['url']); ?>"
-                            class="w-full flex items-center p-4 pl-8 rounded-lg transition-colors duration-300 <?php echo $isActiveSub; ?>">
-                            <span class="text-base font-medium"><?php echo htmlspecialchars($subItem['text']); ?></span>
+                            class="w-full flex items-center p-3 pl-4 rounded-lg transition-colors duration-300 mb-1 last:mb-0 <?php echo $isActiveSub; ?> hover:bg-gray-700/50">
+                            <span class="text-sm font-medium"><?php echo htmlspecialchars($subItem['text']); ?></span>
                         </a>
                     <?php endforeach; ?>
                 </div>
@@ -83,7 +83,7 @@ function isSubmenuActive($submenu)
             ?>
             <a href="<?php echo htmlspecialchars($item['url']); ?>"
                 class="nav-item w-full flex items-center space-x-4 p-4 rounded-lg transition-colors duration-300 <?php echo $isActive; ?>">
-                <i class="fa-solid <?php echo $item['icon']; ?> ml-8 text-xl w-6 text-center"></i>
+                <i class="fa-solid <?php echo $item['icon']; ?> text-xl w-6 text-center"></i>
                 <span class="text-base font-medium"><?php echo htmlspecialchars($item['text']); ?></span>
             </a>
         <?php endif; ?>
@@ -159,7 +159,6 @@ function isSubmenuActive($submenu)
 
     .nav-group.open .nav-submenu {
         max-height: 500px;
-        /* Genoeg ruimte voor alle items */
     }
 
     .nav-arrow {
@@ -170,11 +169,29 @@ function isSubmenuActive($submenu)
         transform: rotate(180deg);
     }
 
-    .nav-header {
+    .nav-header,
+    .nav-item {
         transition: background-color 0.2s ease;
     }
 
-    .nav-item {
-        transition: background-color 0.2s ease;
+    .active-menu {
+        background-color: rgba(59, 130, 246, 0.15);
+        color: #fff;
+    }
+
+    .nav-submenu a {
+        position: relative;
+    }
+
+    .nav-submenu a.active-menu::before {
+        content: '';
+        position: absolute;
+        left: -7px;
+        top: 50%;
+        transform: translateY(-50%);
+        height: 60%;
+        width: 3px;
+        background-color: #3b82f6;
+        border-radius: 2px;
     }
 </style>
