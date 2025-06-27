@@ -292,6 +292,7 @@ $bodyContent = "
                 <a href='drones.php' class='text-gray-900 border-b-2 border-black pb-2'>Drones</a>
                 <a href='employees.php' class='text-gray-600 hover:text-gray-900'>Personeel</a>
                 <a href='addons.php' class='text-gray-600 hover:text-gray-900'>Add-ons</a>
+                <a href='verzekeringen.php' class='text-gray-600 hover:text-gray-900'>Verzekeringen</a>
             </div>
             <button onclick='openAddDroneModal()' class='bg-gradient-to-r from-blue-500 to-blue-700 text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors text-sm flex items-center'>
                 <i class='fa-solid fa-plus mr-2'></i>Nieuwe Drone

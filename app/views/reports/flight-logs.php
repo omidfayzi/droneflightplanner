@@ -233,9 +233,6 @@ $bodyContent = '
             <a href="flight-logs.php" class="text-gray-900 border-b-2 border-black pb-2">Vlucht Logs</a>
             <a href="incidents.php" class="text-gray-600 hover:text-gray-900">Incidenten</a>
         </div>
-        <button onclick="openAddFlightModal()" class="bg-gradient-to-r from-blue-600 to-blue-800 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm flex items-center gap-2">
-            <i class="fa-solid fa-plus-circle"></i> Nieuwe Vlucht
-        </button>
     </div>
     
     <!-- Filter Bar -->
