@@ -1,718 +1,729 @@
 <?php
-// /var/www/public/frontend/pages/assets/personeel.php
-
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
+if (session_status() === PHP_SESSION_NONE) session_start();
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../functions.php';
 
-// --- API Data Ophalen ---
 $apiBaseUrl = defined('API_BASE_URL') ? API_BASE_URL : "http://devserv01.holdingthedrones.com:4539";
-$personeelUrl = "$apiBaseUrl/personeel";
-$personeelResponse = @file_get_contents($personeelUrl);
-$personeel = $personeelResponse ? json_decode($personeelResponse, true) : [];
+$verzekeringenUrl = "$apiBaseUrl/verzekeringen";
 
-// Als de API een 'data' array teruggeeft, gebruik die
-if (isset($personeel['data']) && is_array($personeel['data'])) {
-    $personeel = $personeel['data'];
-}
+$verzekeringenResponse = @file_get_contents($verzekeringenUrl);
+$verzekeringen = $verzekeringenResponse ? json_decode($verzekeringenResponse, true) : [];
+if (isset($verzekeringen['data'])) $verzekeringen = $verzekeringen['data'];
 
-// Controleer op JSON decode fouten
-if (json_last_error() !== JSON_ERROR_NONE && $personeelResponse) {
-    error_log("JSON Decode Error for personnel: " . json_last_error_msg() . " | Response: " . $personeelResponse);
-    $personeel = [];
-}
-
-// --- Data Voorbereiding voor Filters & Tabel ---
+// Kolommen dynamisch bepalen
 $kolomSet = [];
-$potentialFilterFields = ['status', 'role', 'afdeling', 'functie'];
-
-if (!empty($personeel) && is_array($personeel)) {
-    foreach ($personeel as $persoon) {
-        foreach ($persoon as $key => $value) {
-            $kolomSet[$key] = true;
-        }
+foreach ($verzekeringen as $verzekering) {
+    foreach ($verzekering as $key => $value) {
+        $kolomSet[$key] = true;
     }
 }
 $kolommen = array_keys($kolomSet);
 
-// Verzamel unieke waarden voor de filters
+// Verzamel unieke waarden voor filters
 $uniqueStatuses = [];
-$uniqueRoles = [];
-$uniqueDepartments = [];
+$uniqueMaatschappijen = [];
+$uniqueTypes = [];
 
-if (!empty($personeel) && is_array($personeel)) {
-    foreach ($personeel as $persoon) {
-        if (isset($persoon['status']) && !empty($persoon['status']) && !in_array($persoon['status'], $uniqueStatuses)) {
-            $uniqueStatuses[] = $persoon['status'];
-        }
-
-        $roleValue = $persoon['role'] ?? $persoon['functie'] ?? null;
-        if (!empty($roleValue) && !in_array($roleValue, $uniqueRoles)) {
-            $uniqueRoles[] = $roleValue;
-        }
-
-        $departmentValue = $persoon['department'] ?? $persoon['afdeling'] ?? null;
-        if (!empty($departmentValue) && !in_array($departmentValue, $uniqueDepartments)) {
-            $uniqueDepartments[] = $departmentValue;
-        }
+foreach ($verzekeringen as $verzekering) {
+    if (!empty($verzekering['status']) && !in_array($verzekering['status'], $uniqueStatuses)) {
+        $uniqueStatuses[] = $verzekering['status'];
     }
-
-    sort($uniqueStatuses);
-    sort($uniqueRoles);
-    sort($uniqueDepartments);
+    if (!empty($verzekering['maatschappij']) && !in_array($verzekering['maatschappij'], $uniqueMaatschappijen)) {
+        $uniqueMaatschappijen[] = $verzekering['maatschappij'];
+    }
+    if (!empty($verzekering['type']) && !in_array($verzekering['type'], $uniqueTypes)) {
+        $uniqueTypes[] = $verzekering['type'];
+    }
 }
-
-function getStatusClass($status)
-{
-    $statusLower = strtolower($status);
-    return match ($statusLower) {
-        'actief', 'in dienst' => 'bg-green-100 text-green-800',
-        'verlof', 'ziek' => 'bg-yellow-100 text-yellow-800',
-        'inactief', 'uit dienst' => 'bg-red-100 text-red-800',
-        default => 'bg-gray-100 text-gray-800'
-    };
-}
+sort($uniqueStatuses);
+sort($uniqueMaatschappijen);
+sort($uniqueTypes);
 
 $showHeader = 1;
 $userName = $_SESSION['user']['first_name'] ?? 'Onbekend';
-$org = isset($organisation) ? $organisation : 'Holding the Drones';
-$headTitle = "Personeelsbeheer";
+$headTitle = "Verzekeringen Beheer";
 $gobackUrl = 0;
 $rightAttributes = 0;
 
-$bodyContent = "
-    <style>
-        .modal-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(17, 24, 39, 0.70);
-            z-index: 50;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            transition: opacity 0.25s ease-in-out;
-            opacity: 0;
-        }
-        .modal-overlay.active {
-            display: flex;
-            opacity: 1;
-        }
-        .modal-content {
-            background: #fff;
-            border-radius: 1rem;
-            max-width: 580px;
-            width: 100%;
-            box-shadow: 0 8px 32px rgba(31, 41, 55, 0.18);
-            padding: 2.5rem 2rem 1.5rem 2rem;
-            position: relative;
-            animation: modalIn 0.18s cubic-bezier(.4, 0, .2, 1);
-            overflow-y: auto;
-            max-height: 90vh;
-        }
-        @keyframes modalIn {
-            from { transform: translateY(60px) scale(0.98); opacity: 0.3; }
-            to   { transform: translateY(0) scale(1); opacity: 1; }
-        }
-        .modal-close-btn {
-            position: absolute;
-            right: 1.3rem;
-            top: 1.3rem;
-            background: transparent;
-            border: none;
-            font-size: 1.8rem;
-            color: #bbb;
-            cursor: pointer;
-            transition: color 0.15s ease-in-out;
-            line-height: 1;
-            z-index: 10;
-        }
-        .modal-close-btn:hover {
-            color: #111827;
-        }
-        .modal-content h3 {
-            margin-top: 0;
-            margin-bottom: 1.7rem;
-            font-size: 1.22rem;
-            font-weight: 700;
-            color: #1e293b;
-            letter-spacing: .01em;
-        }
-        .form-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1rem;
-        }
-        .form-group { margin-bottom: 1rem; }
-        .form-group label {
-            display: block;
-            margin-bottom: 0.4rem;
-            font-size: 0.875rem;
-            font-weight: 500;
-            color: #374151;
-        }
-        .form-group input,
-        .form-group select,
-        .form-group textarea {
-            border: 1px solid #d1d5db;
-            border-radius: 0.5rem;
-            padding: 0.6rem 0.8rem;
-            width: 100%;
-            font-size: 0.875rem;
-            color: #1f2937;
-            box-shadow: 0 1px 0px rgba(0, 0, 0, 0.03) inset;
-        }
-        .form-group input:focus,
-        .form-group select:focus,
-        .form-group textarea:focus {
-            outline: none;
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
-        }
-        .form-group textarea { resize: vertical; }
-        .form-group .required-star { color: #ef4444; margin-left: 4px;}
-
+$bodyContent = '
+<style>
+    /* Stijl overgenomen van incidenten.php */
+    .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(17,24,39,0.70);
+        z-index: 50;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        transition: opacity 0.25s;
+        opacity: 0;
+    }
+    .modal-overlay.active {
+        display: flex;
+        opacity: 1;
+    }
+    .modal-content {
+        background: #fff;
+        border-radius: 1.2rem;
+        max-width: 700px;
+        width: 100%;
+        box-shadow: 0 8px 32px rgba(31, 41, 55, 0.18);
+        padding: 2.5rem 2rem 1.5rem 2rem;
+        position: relative;
+        animation: modalIn 0.18s cubic-bezier(.4,0,.2,1);
+        overflow-y: auto;
+        max-height: 90vh;
+    }
+    @keyframes modalIn {
+        from { transform: translateY(60px) scale(0.98); opacity: 0.3; }
+        to   { transform: translateY(0) scale(1); opacity: 1; }
+    }
+    .modal-close-btn {
+        position: absolute;
+        right: 1.3rem;
+        top: 1.3rem;
+        background: transparent;
+        border: none;
+        font-size: 1.8rem;
+        color: #bbb;
+        cursor: pointer;
+        transition: color 0.15s;
+        line-height: 1;
+    }
+    .modal-close-btn:hover {
+        color: #111827;
+    }
+    .modal-content h3 {
+        margin-top: 0;
+        margin-bottom: 1.7rem;
+        font-size: 1.22rem;
+        font-weight: 700;
+        color: #1e293b;
+        letter-spacing: .01em;
+    }
+    
+    .detail-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+    }
+    .detail-group {
+        margin-bottom: 1.2rem;
+    }
+    .detail-label {
+        font-size: 0.875rem;
+        color: #6b7280;
+        font-weight: 500;
+        margin-bottom: 0.3rem;
+    }
+    .detail-value {
+        font-size: 1rem;
+        color: #1f2937;
+        font-weight: 500;
+    }
+    
+    .filter-bar {
+        background: #f3f4f6;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.75rem;
+        padding: 1rem 1.5rem;
+        margin: 0 1.5rem 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+    .filter-group {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .filter-label {
+        font-size: 0.875rem;
+        color: #4b5563;
+        font-weight: 500;
+    }
+    .filter-select, .filter-search {
+        background: white;
+        border: 1px solid #d1d5db;
+        border-radius: 0.5rem;
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+        cursor: pointer;
+        min-width: 180px;
+    }
+    .filter-select:focus, .filter-search:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    .filter-search {
+        flex-grow: 1;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' class=\'h-6 w-6\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%239ca3af\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z\' /%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 0.75rem center;
+        background-size: 1rem;
+        min-width: 280px;
+    }
+    
+    /* Algemene styling */
+    .h-full { height: 100%; }
+    .bg-gray-100 { background-color: #f3f4f6; }
+    .shadow-md { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); }
+    .rounded-tl-xl { border-top-left-radius: 0.75rem; }
+    .w-full { width: 100%; }
+    .flex { display: flex; }
+    .flex-col { flex-direction: column; }
+    .p-6 { padding: 1.5rem; }
+    .bg-white { background-color: #fff; }
+    .border-b { border-bottom-width: 1px; }
+    .border-gray-200 { border-color: #e5e7eb; }
+    .flex-shrink-0 { flex-shrink: 0; }
+    .space-x-6 > * + * { margin-left: 1.5rem; }
+    .text-sm { font-size: 0.875rem; }
+    .font-medium { font-weight: 500; }
+    .text-gray-600 { color: #4b5563; }
+    .hover\:text-gray-900:hover { color: #111827; }
+    .text-gray-900 { color: #111827; }
+    .border-b-2 { border-bottom-width: 2px; }
+    .border-black { border-color: #000; }
+    .pb-2 { padding-bottom: 0.5rem; }
+    .pt-4 { padding-top: 1rem; }
+    .overflow-y-auto { overflow-y: auto; }
+    .flex-grow { flex-grow: 1; }
+    .rounded-lg { border-radius: 0.5rem; }
+    .shadow { box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px 0 rgba(0,0,0,0.06); }
+    .overflow-hidden { overflow: hidden; }
+    .overflow-x-auto { overflow-x: auto; }
+    .bg-gray-50 { background-color: #f9fafb; }
+    .text-xs { font-size: 0.75rem; }
+    .uppercase { text-transform: uppercase; }
+    .text-gray-700 { color: #374151; }
+    .px-4 { padding-left: 1rem; padding-right: 1rem; }
+    .py-3 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+    .text-left { text-align: left; }
+    .divide-y > * + * { border-top-width: 1px; }
+    .divide-gray-200 > * + * { border-color: #e5e7eb; }
+    .whitespace-nowrap { white-space: nowrap; }
+    .hover\:bg-gray-50:hover { background-color: #f9fafb; }
+    .transition { transition: all 0.15s ease; }
+    .text-blue-600 { color: #2563eb; }
+    .hover\:text-blue-800:hover { color: #1e40af; }
+    .mr-2 { margin-right: 0.5rem; }
+    .text-center { text-align: center; }
+    .text-gray-500 { color: #6b7280; }
+    .py-10 { padding-top: 2.5rem; padding-bottom: 2.5rem; }
+    .justify-between { justify-content: space-between; }
+    .items-center { align-items: center; }
+    
+    /* Responsive aanpassingen */
+    @media (max-width: 768px) {
         .filter-bar {
-            background: #f3f4f6;
-            border: 1px solid #e5e7eb;
-            border-radius: 0.75rem;
-            padding: 1rem 1.5rem;
-            margin-bottom: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            flex-wrap: wrap;
+            flex-direction: column;
+            align-items: stretch;
         }
         .filter-group {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        .filter-label {
-            font-size: 0.875rem;
-            color: #4b5563;
-            font-weight: 500;
+            width: 100%;
         }
         .filter-select, .filter-search {
-            background: white;
-            border: 1px solid #d1d5db;
-            border-radius: 0.5rem;
-            padding: 0.5rem 1rem;
-            font-size: 0.875rem;
-            cursor: pointer;
-            min-width: 180px;
+            width: 100%;
         }
-        .filter-select:focus, .filter-search:focus {
-            outline: none;
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        }
-        .filter-search {
-            flex-grow: 1;
-            background-image: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' class='h-6 w-6' fill='none' viewBox='0 0 24 24' stroke='%239ca3af'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z' /%3E%3C/svg%3E\");
-            background-repeat: no-repeat;
-            background-position: right 0.75rem center;
-            background-size: 1rem;
-            min-width: 280px;
-        }
-        
-        .employee-detail-modal {
-            max-width: 800px;
-        }
-        .employee-detail-header {
-            display: flex;
-            align-items: center;
-            margin-bottom: 1.5rem;
-        }
-        .employee-icon {
-            font-size: 2rem;
-            color: #3b82f6;
-            margin-right: 1rem;
-        }
-        .employee-detail-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 1.5rem;
-        }
-        .detail-group {
-            margin-bottom: 1.2rem;
-        }
-        .detail-label {
-            font-weight: 600;
-            color: #4b5563;
-            margin-bottom: 0.3rem;
-            font-size: 0.9rem;
-        }
-        .detail-value {
-            font-size: 1rem;
-            color: #1f2937;
-            padding: 0.5rem 0;
-            border-bottom: 1px solid #e5e7eb;
-        }
-        .detail-value.status {
-            display: inline-block;
-            padding: 0.25rem 0.75rem;
-            border-radius: 9999px;
-            font-size: 0.85rem;
-            font-weight: 500;
-        }
-        .employee-actions {
-            display: flex;
-            gap: 1rem;
-            margin-top: 2rem;
-            justify-content: flex-end;
-        }
-        
-        @media (max-width: 768px) {
-            .filter-bar {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            .filter-group {
-                width: 100%;
-            }
-            .filter-select, .filter-search {
-                width: 100%;
-            }
-        }
-    </style>
+    }
+    
+    /* Verzekering-specifieke stijlen */
+    .status-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+    .status-actief { background-color: #dcfce7; color: #166534; }
+    .status-verlopen { background-color: #fee2e2; color: #b91c1c; }
+    .status-in-behandeling { background-color: #fffbeb; color: #b45309; }
+</style>
 
-    <div class='h-full bg-gray-100 shadow-md rounded-tl-xl w-full flex flex-col'>
-        <div class='p-6 bg-white flex justify-between items-center border-b border-gray-200 flex-shrink-0'>
-            <div class='flex space-x-6 text-sm font-medium'>
-                <a href='drones.php' class='text-gray-600 hover:text-gray-900'>Drones</a>
-                <a href='employees.php' class='text-gray-900 border-b-2 border-black pb-2'>Personeel</a>
-                <a href='addons.php' class='text-gray-600 hover:text-gray-900'>Add-ons</a>
-                <a href='verzekeringen.php' class='text-gray-600 hover:text-gray-900'>Verzekeringen</a>
-            </div>
-            <button onclick='openAddEmployeeModal()' class='bg-gradient-to-r from-blue-500 to-blue-700 text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors text-sm flex items-center'>
-                <i class='fa-solid fa-plus mr-2'></i>Nieuw Personeelslid
-            </button>
+<div class="h-full bg-gray-100 shadow-md rounded-tl-xl w-full flex flex-col">
+    <div class="p-6 bg-white flex justify-between items-center border-b border-gray-200 flex-shrink-0">
+        <div class="flex space-x-6 text-sm font-medium">
+            <a href="drones.php" class="text-gray-600 hover:text-gray-900">Drones</a>
+            <a href="employees.php" class="text-gray-600 hover:text-gray-900">Personeel</a>
+            <a href="addons.php" class="text-gray-600 hover:text-gray-900">Add-ons</a>
+            <a href="verzekeringen.php" class="text-gray-900 border-b-2 border-black pb-2">Verzekeringen</a>
         </div>
-
-        <div class='px-6 pt-4'>
-            <div class='filter-bar'>
-                <div class='filter-group'>
-                    <span class='filter-label'>Status:</span>
-                    <select id='statusFilter' class='filter-select'>
-                        <option value=''>Alle statussen</option>";
-foreach ($uniqueStatuses as $status) {
-    $bodyContent .= "<option value='" . htmlspecialchars(strtolower($status)) . "'>" . htmlspecialchars(ucfirst($status)) . "</option>";
+        <button onclick="openAddVerzekeringModal()" class="bg-gradient-to-r from-blue-600 to-blue-800 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm flex items-center gap-2">
+            <i class="fa-solid fa-plus-circle"></i> Nieuwe Verzekering
+        </button>
+    </div>
+    
+    <!-- Filter Bar -->
+    <div class="px-6 pt-4">
+        <div class="filter-bar">
+            <div class="filter-group">
+                <span class="filter-label">Maatschappij:</span>
+                <select id="maatschappijFilter" class="filter-select">
+                    <option value="">Alle maatschappijen</option>';
+foreach ($uniqueMaatschappijen as $maatschappij) {
+    $bodyContent .= '<option value="' . htmlspecialchars(strtolower($maatschappij)) . '">' . htmlspecialchars($maatschappij) . '</option>';
 }
-$bodyContent .= "
-                    </select>
-                </div>";
-
-// Voeg functie filter toe indien beschikbaar
-if (!empty($uniqueRoles)) {
-    $bodyContent .= "
-                <div class='filter-group'>
-                    <span class='filter-label'>Functie:</span>
-                    <select id='roleFilter' class='filter-select'>
-                        <option value=''>Alle functies</option>";
-    foreach ($uniqueRoles as $role) {
-        $bodyContent .= "<option value='" . htmlspecialchars(strtolower($role)) . "'>" . htmlspecialchars($role) . "</option>";
-    }
-    $bodyContent .= "
-                    </select>
-                </div>";
-}
-
-// Voeg afdeling filter toe indien beschikbaar
-if (!empty($uniqueDepartments)) {
-    $bodyContent .= "
-                <div class='filter-group'>
-                    <span class='filter-label'>Afdeling:</span>
-                    <select id='departmentFilter' class='filter-select'>
-                        <option value=''>Alle afdelingen</option>";
-    foreach ($uniqueDepartments as $dept) {
-        $bodyContent .= "<option value='" . htmlspecialchars(strtolower($dept)) . "'>" . htmlspecialchars($dept) . "</option>";
-    }
-    $bodyContent .= "
-                    </select>
-                </div>";
-}
-
-$bodyContent .= "
-                <div class='filter-group flex-grow'>
-                    <input id='searchInput' type='text' placeholder='Zoek personeel...' class='filter-search'>
-                </div>
+$bodyContent .= '
+                </select>
+            </div>
+            
+            <div class="filter-group flex-grow">
+                <input id="searchInput" type="text" placeholder="Zoek verzekering..." class="filter-search">
             </div>
         </div>
-
-        <div class='p-6 overflow-y-auto flex-grow'>
-            <div class='bg-white rounded-lg shadow overflow-hidden'>
-                <div class='p-6 border-b border-gray-200 flex justify-between items-center'>
-                    <h2 class='text-xl font-semibold text-gray-800'>Personeelsbestand - $org</h2>
-                </div>
-                <div class='overflow-x-auto'>
-                    <table id='employeesTable' class='w-full'>
-                        <thead class='bg-gray-50 text-xs uppercase text-gray-700'>
-                            <tr>";
-
-// Toon alle kolommen
+    </div>
+    
+    <div class="p-6 overflow-y-auto flex-grow">
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <div class="overflow-x-auto">
+                <table id="verzekeringenTable" class="w-full">
+                    <thead class="bg-gray-50 text-xs uppercase text-gray-700">
+                        <tr>';
 foreach ($kolommen as $kolom) {
-    $bodyContent .= "<th class='px-4 py-3 text-left'>" . htmlspecialchars($kolom) . "</th>";
+    $bodyContent .= '<th class="px-4 py-3 text-left">' . htmlspecialchars($kolom) . '</th>';
 }
-$bodyContent .= "<th class='px-4 py-3 text-left'>Acties</th>";
-$bodyContent .= "</tr>
-                        </thead>
-                        <tbody class='divide-y divide-gray-200 text-sm'>";
-
-if (!empty($personeel) && is_array($personeel)) {
-    foreach ($personeel as $persoon) {
-        $bodyContent .= "<tr class='hover:bg-gray-50 transition'";
-
-        // Voeg data-attributen toe voor filtering
-        if (isset($persoon['status'])) {
-            $bodyContent .= " data-status='" . htmlspecialchars(strtolower($persoon['status'])) . "'";
+$bodyContent .= '<th class="px-4 py-3 text-left">Acties</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 text-sm">';
+if (!empty($verzekeringen) && is_array($verzekeringen)) {
+    foreach ($verzekeringen as $verzekering) {
+        $bodyContent .= '<tr class="hover:bg-gray-50 transition"';
+        if (isset($verzekering['status'])) {
+            $bodyContent .= ' data-status="' . htmlspecialchars(strtolower($verzekering['status'])) . '"';
         }
-        if (isset($persoon['role']) || isset($persoon['functie'])) {
-            $role = $persoon['role'] ?? $persoon['functie'] ?? '';
-            $bodyContent .= " data-role='" . htmlspecialchars(strtolower($role)) . "'";
+        if (isset($verzekering['maatschappij'])) {
+            $bodyContent .= ' data-maatschappij="' . htmlspecialchars(strtolower($verzekering['maatschappij'])) . '"';
         }
-        if (isset($persoon['department']) || isset($persoon['afdeling'])) {
-            $dept = $persoon['department'] ?? $persoon['afdeling'] ?? '';
-            $bodyContent .= " data-department='" . htmlspecialchars(strtolower($dept)) . "'";
+        if (isset($verzekering['type'])) {
+            $bodyContent .= ' data-type="' . htmlspecialchars(strtolower($verzekering['type'])) . '"';
         }
+        $bodyContent .= '>';
 
-        $bodyContent .= ">";
-
-        // Toon alle waarden voor deze persoon
         foreach ($kolommen as $kolom) {
-            $waarde = $persoon[$kolom] ?? '';
-            $displayValue = $waarde;
+            $waarde = $verzekering[$kolom] ?? '';
 
+            // Speciale opmaak voor bepaalde velden
             if ($kolom === 'status') {
-                $statusClass = getStatusClass($waarde);
-                $displayValue = "<span class='$statusClass px-3 py-1 rounded-full text-xs font-semibold'>" . htmlspecialchars($waarde) . "</span>";
-            } else {
-                $displayValue = htmlspecialchars($waarde);
+                $statusClass = 'status-' . str_replace(' ', '-', strtolower($waarde));
+                $waarde = '<span class="status-badge ' . $statusClass . '">' . htmlspecialchars($waarde) . '</span>';
+            } elseif ($kolom === 'premie' && is_numeric($waarde)) {
+                $waarde = '€' . number_format((float)$waarde, 2, ',', '.');
+            } elseif (in_array($kolom, ['startdatum', 'einddatum', 'verzekering_geldig_tot', 'aankoopdatum'])) {
+                if ($waarde && $waarde !== '0000-00-00') {
+                    try {
+                        $date = new DateTime($waarde);
+                        $waarde = $date->format('d-m-Y');
+                    } catch (Exception $e) {
+                        // Behoud oorspronkelijke waarde bij fout
+                    }
+                } else {
+                    $waarde = 'N/B';
+                }
             }
 
-            $bodyContent .= "<td class='px-4 py-3 whitespace-nowrap'>$displayValue</td>";
+            $bodyContent .= '<td class="px-4 py-3 whitespace-nowrap">' . $waarde . '</td>';
         }
 
-        $persoonId = $persoon['personeelId'] ?? $persoon['id'] ?? 'unknown';
-        $bodyContent .= "<td class='px-4 py-3 whitespace-nowrap text-gray-600'>
-                            <button onclick='openEmployeeDetailModal(" . json_encode($persoon) . ")' class='text-blue-600 hover:text-blue-800 transition mr-3' title='Details personeel'>
-                                <i class='fa-solid fa-info-circle'></i>
-                            </button>
-                            <button onclick='openEditEmployeeModal(" . json_encode($persoon) . ")' class='text-green-600 hover:text-green-800 transition' title='Bewerk personeel'>
-                                <i class='fa-solid fa-edit'></i>
-                            </button>
-                        </td>";
-
-        $bodyContent .= "</tr>";
+        $bodyContent .= '<td class="px-4 py-3 whitespace-nowrap">
+                <button onclick="openVerzekeringDetailModal(' . htmlspecialchars(json_encode($verzekering, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP)) . ')" class="text-blue-600 hover:text-blue-800 mr-2" title="Details">
+                    <i class="fa-regular fa-file-lines"></i>
+                </button>
+                <button onclick="openEditVerzekeringModal(' . htmlspecialchars(json_encode($verzekering, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP)) . ')" class="text-green-600 hover:text-green-800 mr-2" title="Bewerken">
+                    <i class="fa-solid fa-edit"></i>
+                </button>
+            </td>';
+        $bodyContent .= '</tr>';
     }
 } else {
-    $bodyContent .= "<tr><td colspan='" . (count($kolommen) + 1) . "' class='text-center text-gray-500 py-10'>Geen personeel gevonden of data kon niet worden geladen.</td></tr>";
+    $bodyContent .= '<tr><td colspan="' . (count($kolommen) + 1) . '" class="text-center text-gray-500 py-10">Geen verzekeringen gevonden of data kon niet worden geladen.</td></tr>';
 }
-$bodyContent .= "
-                        </tbody>
-                    </table>
-                </div>
-                <div class='p-4 border-t border-gray-200 flex justify-between items-center text-sm'>
-                    <span>Toont " . (($personeel) ? ("1-" . count($personeel)) : "0") . " van " . count($personeel) . " personeelsleden</span>
-                </div>
+$bodyContent .= '
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
+</div>
 
-    <div id='addEmployeeModal' class='modal-overlay' role='dialog' aria-modal='true' aria-labelledby='addEmployeeModalTitle'>
-        <div class='modal-content'>
-            <button class='modal-close-btn' aria-label='Sluit modal' onclick='closeAddEmployeeModal()'>×</button>
-            <h3 id='addEmployeeModalTitle' class='flex items-center gap-2'>
-              <i class=\"fa-solid fa-user text-white mr-2\"></i> 
-              Nieuw Personeelslid Toevoegen
-            </h3>
-            <form id='addEmployeeForm' action='save_employee.php' method='POST' class='space-y-4'>
-                <div class='form-grid'>
-                    <div class='form-group'>
-                        <label for='employee_first_name'>Voornaam <span class='required-star'>*</span></label>
-                        <input type='text' id='employee_first_name' name='first_name' required placeholder='bv. Jan'>
-                    </div>
-                    <div class='form-group'>
-                        <label for='employee_last_name'>Achternaam <span class='required-star'>*</span></label>
-                        <input type='text' id='employee_last_name' name='last_name' required placeholder='bv. Jansen'>
-                    </div>
-                    <div class='form-group'>
-                        <label for='employee_email'>E-mail <span class='required-star'>*</span></label>
-                        <input type='email' id='employee_email' name='email' required placeholder='bv. jan@voorbeeld.nl'>
-                    </div>
-                    <div class='form-group'>
-                        <label for='employee_phone'>Telefoon</label>
-                        <input type='text' id='employee_phone' name='phone' placeholder='bv. 0612345678'>
-                    </div>
-                    <div class='form-group'>
-                        <label for='employee_function'>Functie <span class='required-star'>*</span></label>
-                        <input type='text' id='employee_function' name='functie' required placeholder='bv. Drone Operator'>
-                    </div>
-                    <div class='form-group'>
-                        <label for='employee_status'>Status <span class='required-star'>*</span></label>
-                        <select id='employee_status' name='status' required>
-                            <option value=''>Selecteer status...</option>";
-foreach ($uniqueStatuses as $status) {
-    $bodyContent .= "<option value='" . htmlspecialchars(strtolower($status)) . "'>" . htmlspecialchars(ucfirst($status)) . "</option>";
-}
-$bodyContent .= "
-                        </select>
-                    </div>
-                    <div class='form-group'>
-                        <label for='employee_hire_date'>Datum in dienst</label>
-                        <input type='date' id='employee_hire_date' name='hire_date'>
-                    </div>
-                    <div class='form-group'>
-                        <label for='employee_end_date'>Datum uit dienst</label>
-                        <input type='date' id='employee_end_date' name='end_date'>
-                    </div>
-                    
-                    <div class='form-group col-span-full'>
-                         <label for='employee_notes'>Notities</label>
-                         <textarea id='employee_notes' name='notes' rows='3' placeholder='Eventuele aanvullende informatie...'></textarea>
-                    </div>
+<!-- Modal Nieuwe Verzekering -->
+<div id="addVerzekeringModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="addVerzekeringTitle">
+    <div class="modal-content">
+        <button class="modal-close-btn" aria-label="Sluit modal" onclick="closeAddVerzekeringModal()">&times;</button>
+        <h3 id="addVerzekeringTitle" class="flex items-center gap-2">
+            <i class="fa-solid fa-file-contract text-blue-500"></i> 
+            Nieuwe Verzekering Toevoegen
+        </h3>
+        <form id="addVerzekeringForm" action="save_verzekering.php" method="POST" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="form-group">
+                    <label for="add_verzekering_naam">Naam <span class="text-red-500">*</span></label>
+                    <input type="text" name="naam" id="add_verzekering_naam" class="w-full p-2 border border-gray-300 rounded-md shadow-sm" required>
                 </div>
-                <div class='pt-4 flex justify-end space-x-3'>
-                    <button type='button' onclick='closeAddEmployeeModal()' class='bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 text-sm'>Annuleren</button>
-                    <button type='submit' class='bg-gradient-to-r from-blue-500 to-blue-700 text-white px-4 py-2 rounded-lg hover:bg-gray-800 text-sm flex items-center'>
-                        <i class='fa-solid fa-save mr-2'></i>Personeelslid Opslaan
-                    </button>
+                
+                <div class="form-group">
+                    <label for="add_verzekering_type">Type <span class="text-red-500">*</span></label>
+                    <select name="type" id="add_verzekering_type" class="w-full p-2 border border-gray-300 rounded-md shadow-sm" required>
+                        <option value="">Selecteer type...</option>
+                        <option value="WA">WA (Wettelijke Aansprakelijkheid)</option>
+                        <option value="Allrisk">Allrisk</option>
+                        <option value="Casco">Casco</option>
+                        <option value="Bedrijfsmatig gebruik">Bedrijfsmatig gebruik</option>
+                    </select>
                 </div>
-            </form>
-        </div>
+                
+                <div class="form-group">
+                    <label for="add_verzekering_maatschappij">Maatschappij <span class="text-red-500">*</span></label>
+                    <select name="maatschappij" id="add_verzekering_maatschappij" class="w-full p-2 border border-gray-300 rounded-md shadow-sm" required>
+                        <option value="">Selecteer maatschappij...</option>
+                        <option value="Unive">Unive</option>
+                        <option value="Aon">Aon</option>
+                        <option value="Allianz">Allianz</option>
+                        <option value="Achmea">Achmea</option>
+                        <option value="HDD Verzekeringen">HDD Verzekeringen</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="add_verzekering_polisnummer">Polisnummer <span class="text-red-500">*</span></label>
+                    <input type="text" name="polisnummer" id="add_verzekering_polisnummer" class="w-full p-2 border border-gray-300 rounded-md shadow-sm" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="add_verzekering_premie">Premie (€) <span class="text-red-500">*</span></label>
+                    <input type="number" name="premie" id="add_verzekering_premie" step="0.01" min="0" class="w-full p-2 border border-gray-300 rounded-md shadow-sm" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="add_verzekering_dekking">Dekking</label>
+                    <input type="text" name="dekking" id="add_verzekering_dekking" class="w-full p-2 border border-gray-300 rounded-md shadow-sm" placeholder="bv. €1.000.000 aansprakelijkheid">
+                </div>
+                
+                <div class="form-group">
+                    <label for="add_verzekering_startdatum">Startdatum <span class="text-red-500">*</span></label>
+                    <input type="date" name="startdatum" id="add_verzekering_startdatum" class="w-full p-2 border border-gray-300 rounded-md shadow-sm" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="add_verzekering_einddatum">Einddatum <span class="text-red_500">*</span></label>
+                    <input type="date" name="einddatum" id="add_verzekering_einddatum" class="w-full p-2 border border-gray-300 rounded-md shadow-sm" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="add_verzekering_status">Status <span class="text-red_500">*</span></label>
+                    <select name="status" id="add_verzekering_status" class="w-full p-2 border border-gray-300 rounded-md shadow-sm" required>
+                        <option value="Actief">Actief</option>
+                        <option value="Verlopen">Verlopen</option>
+                        <option value="In behandeling">In behandeling</option>
+                        <option value="Geweigerd">Geweigerd</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="add_verzekering_drone">Drone ID</label>
+                    <input type="number" name="droneId" id="add_verzekering_drone" class="w-full p-2 border border-gray-300 rounded-md shadow-sm" placeholder="bv. 123">
+                </div>
+                
+                <div class="form-group">
+                    <label for="add_verzekering_org">Organisatie ID</label>
+                    <input type="number" name="organisatieId" id="add_verzekering_org" class="w-full p-2 border border-gray-300 rounded-md shadow-sm" placeholder="bv. 1">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="add_verzekering_notes">Notities</label>
+                <textarea name="notes" id="add_verzekering_notes" rows="3" class="w-full p-2 border border-gray-300 rounded-md shadow-sm" placeholder="Bijzonderheden of voorwaarden..."></textarea>
+            </div>
+            
+            <div class="pt-4 flex justify-end space-x-3">
+                <button type="button" onclick="closeAddVerzekeringModal()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 text-sm">Annuleren</button>
+                <button type="submit" class="bg-gradient-to-r from-blue-600 to-blue-800 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-save"></i> Verzekering Opslaan
+                </button>
+            </div>
+        </form>
     </div>
+</div>
 
-    <div id='employeeDetailModal' class='modal-overlay' role='dialog' aria-modal='true' aria-labelledby='employeeDetailModalTitle'>
-        <div class='modal-content employee-detail-modal'>
-            <button class='modal-close-btn' aria-label='Sluit modal' onclick='closeEmployeeDetailModal()'>×</button>
-            <div id='employeeDetailContent'></div>
-        </div>
+<!-- Modal Details Verzekering -->
+<div id="verzekeringDetailModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="verzekeringDetailTitle">
+    <div class="modal-content">
+        <button class="modal-close-btn" aria-label="Sluit details" onclick="closeVerzekeringDetailModal()">&times;</button>
+        <h3 id="verzekeringDetailTitle" class="flex items-center gap-2">
+            <i class="fa-solid fa-file-contract text-blue-500"></i> 
+            Verzekering Details
+        </h3>
+        <div id="verzekeringDetailContent" class="detail-grid"></div>
     </div>
+</div>
 
-    <div id='editEmployeeModal' class='modal-overlay' role='dialog' aria-modal='true' aria-labelledby='editEmployeeModalTitle'>
-        <div class='modal-content'>
-            <button class='modal-close-btn' aria-label='Sluit modal' onclick='closeEditEmployeeModal()'>×</button>
-            <h3 id='editEmployeeModalTitle' class='flex items-center gap-2'>
-              <i class=\"fa-solid fa-pen text-gray-700 mr-2\"></i> 
-              Personeelslid Bewerken
-            </h3>
-            <form id='editEmployeeForm' action='update_employee.php' method='POST' class='space-y-4'>
-                <input type='hidden' id='edit_employeeId' name='employeeId'>
-                <div class='form-grid' id='editEmployeeFormContent'>
+<!-- Modal Bewerk Verzekering -->
+<div id="editVerzekeringModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="editVerzekeringTitle">
+    <div class="modal-content">
+        <button class="modal-close-btn" aria-label="Sluit modal" onclick="closeEditVerzekeringModal()">&times;</button>
+        <h3 id="editVerzekeringTitle" class="flex items-center gap-2">
+            <i class="fa-solid fa-pen text-blue-500"></i> 
+            Verzekering Bewerken
+        </h3>
+        <form id="editVerzekeringForm" action="update_verzekering.php" method="POST" class="space-y-4">
+            <input type="hidden" name="verzekeringId" id="edit_verzekering_id">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="form-group">
+                    <label for="edit_verzekering_naam">Naam <span class="text-red-500">*</span></label>
+                    <input type="text" name="naam" id="edit_verzekering_naam" class="w-full p-2 border border-gray-300 rounded-md shadow-sm" required>
                 </div>
-                <div class='pt-4 flex justify-end space-x-3'>
-                    <button type='button' onclick='closeEditEmployeeModal()' class='bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 text-sm'>Annuleren</button>
-                    <button type='submit' class='bg-gradient-to-r from-blue-500 to-blue-700 text-white px-4 py-2 rounded-lg hover:bg-gray-800 text-sm flex items-center'>
-                        <i class='fa-solid fa-save mr-2'></i>Wijzigingen Opslaan
-                    </button>
+                
+                <div class="form-group">
+                    <label for="edit_verzekering_type">Type <span class="text-red-500">*</span></label>
+                    <select name="type" id="edit_verzekering_type" class="w-full p-2 border border-gray-300 rounded-md shadow-sm" required>
+                        <option value="WA">WA (Wettelijke Aansprakelijkheid)</option>
+                        <option value="Allrisk">Allrisk</option>
+                        <option value="Casco">Casco</option>
+                        <option value="Bedrijfsmatig gebruik">Bedrijfsmatig gebruik</option>
+                    </select>
                 </div>
-            </form>
-        </div>
+                
+                <div class="form-group">
+                    <label for="edit_verzekering_maatschappij">Maatschappij <span class="text-red-500">*</span></label>
+                    <select name="maatschappij" id="edit_verzekering_maatschappij" class="w-full p-2 border border-gray-300 rounded-md shadow-sm" required>
+                        <option value="Unive">Unive</option>
+                        <option value="Aon">Aon</option>
+                        <option value="Allianz">Allianz</option>
+                        <option value="Achmea">Achmea</option>
+                        <option value="HDD Verzekeringen">HDD Verzekeringen</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="edit_verzekering_polisnummer">Polisnummer <span class="text-red-500">*</span></label>
+                    <input type="text" name="polisnummer" id="edit_verzekering_polisnummer" class="w-full p-2 border border-gray-300 rounded-md shadow-sm" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="edit_verzekering_premie">Premie (€) <span class="text-red-500">*</span></label>
+                    <input type="number" name="premie" id="edit_verzekering_premie" step="0.01" min="0" class="w-full p-2 border border-gray-300 rounded-md shadow-sm" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="edit_verzekering_dekking">Dekking</label>
+                    <input type="text" name="dekking" id="edit_verzekering_dekking" class="w-full p-2 border border-gray-300 rounded-md shadow-sm" placeholder="bv. €1.000.000 aansprakelijkheid">
+                </div>
+                
+                <div class="form-group">
+                    <label for="edit_verzekering_startdatum">Startdatum <span class="text-red-500">*</span></label>
+                    <input type="date" name="startdatum" id="edit_verzekering_startdatum" class="w-full p-2 border border-gray-300 rounded-md shadow-sm" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="edit_verzekering_einddatum">Einddatum <span class="text-red_500">*</span></label>
+                    <input type="date" name="einddatum" id="edit_verzekering_einddatum" class="w-full p-2 border border-gray-300 rounded-md shadow-sm" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="edit_verzekering_status">Status <span class="text-red_500">*</span></label>
+                    <select name="status" id="edit_verzekering_status" class="w-full p-2 border border-gray-300 rounded-md shadow-sm" required>
+                        <option value="Actief">Actief</option>
+                        <option value="Verlopen">Verlopen</option>
+                        <option value="In behandeling">In behandeling</option>
+                        <option value="Geweigerd">Geweigerd</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="edit_verzekering_drone">Drone ID</label>
+                    <input type="number" name="droneId" id="edit_verzekering_drone" class="w-full p-2 border border-gray-300 rounded-md shadow-sm" placeholder="bv. 123">
+                </div>
+                
+                <div class="form-group">
+                    <label for="edit_verzekering_org">Organisatie ID</label>
+                    <input type="number" name="organisatieId" id="edit_verzekering_org" class="w-full p-2 border border-gray-300 rounded-md shadow-sm" placeholder="bv. 1">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="edit_verzekering_notes">Notities</label>
+                <textarea name="notes" id="edit_verzekering_notes" rows="3" class="w-full p-2 border border-gray-300 rounded-md shadow-sm" placeholder="Bijzonderheden of voorwaarden..."></textarea>
+            </div>
+            
+            <div class="pt-4 flex justify-end space-x-3">
+                <button type="button" onclick="closeEditVerzekeringModal()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 text-sm">Annuleren</button>
+                <button type="submit" class="bg-gradient-to-r from-blue-600 to-blue-800 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-save"></i> Wijzigingen Opslaan
+                </button>
+            </div>
+        </form>
     </div>
+</div>
 
-    <script>
-        const employeesData = " . json_encode($personeel, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ";
-        
-        const addEmployeeModal = document.getElementById('addEmployeeModal');
-        const employeeDetailModal = document.getElementById('employeeDetailModal');
-        const editEmployeeModal = document.getElementById('editEmployeeModal');
-        
-        function openAddEmployeeModal() {
-            if (addEmployeeModal) addEmployeeModal.classList.add('active');
-            document.body.style.overflow = 'hidden';
-        }
-        
-        function closeAddEmployeeModal() {
-            if (addEmployeeModal) {
-                 addEmployeeModal.classList.remove('active');
-                 document.getElementById('addEmployeeForm')?.reset();
-                 document.body.style.overflow = '';
-            }
-        }
+<script>
+    // Modal open/close voor verzekeringen
+    const addVerzekeringModal = document.getElementById("addVerzekeringModal");
+    const verzekeringDetailModal = document.getElementById("verzekeringDetailModal");
+    const editVerzekeringModal = document.getElementById("editVerzekeringModal");
 
-        function openEmployeeDetailModal(employee) {
-            const modalContent = document.getElementById('employeeDetailContent');
-            if (modalContent) {
-                let content = '<div class=\"employee-detail-header\">';
-                content += '<i class=\"fa-solid fa-user employee-icon\"></i>';
-                content += '<h3 class=\"text-xl font-semibold\">' + (employee.first_name || '') + ' ' + (employee.last_name || '') + '</h3>';
-                content += '</div>';
-                
-                content += '<div class=\"employee-detail-grid\">';
-                content += '<div>';
-                content += '<div class=\"detail-group\"><div class=\"detail-label\">E-mail</div><div class=\"detail-value\">' + (employee.email || 'N/B') + '</div></div>';
-                content += '<div class=\"detail-group\"><div class=\"detail-label\">Telefoon</div><div class=\"detail-value\">' + (employee.phone || 'N/B') + '</div></div>';
-                content += '<div class=\"detail-group\"><div class=\"detail-label\">Functie</div><div class=\"detail-value\">' + (employee.functie || employee.role || 'N/B') + '</div></div>';
-                let statusClass = getStatusClass(employee.status);
-                content += '<div class=\"detail-group\"><div class=\"detail-label\">Status</div><div class=\"detail-value\"><span class=\"detail-value status ' + statusClass + '\">' + (employee.status || 'Onbekend') + '</span></div></div>';
-                content += '</div>';
-                
-                content += '<div>';
-                content += '<div class=\"detail-group\"><div class=\"detail-label\">Afdeling</div><div class=\"detail-value\">' + (employee.afdeling || employee.department || 'N/B') + '</div></div>';
-                content += '<div class=\"detail-group\"><div class=\"detail-label\">Datum in dienst</div><div class=\"detail-value\">' + formatEmployeeDate(employee.hire_date) + '</div></div>';
-                content += '<div class=\"detail-group\"><div class=\"detail-label\">Datum uit dienst</div><div class=\"detail-value\">' + formatEmployeeDate(employee.end_date) + '</div></div>';
-                content += '</div></div>';
-                
-                content += '<div class=\"detail-group col-span-full\"><div class=\"detail-label\">Notities</div><div class=\"detail-value\">' + (employee.notes || 'Geen notities beschikbaar') + '</div></div>';
-
-                modalContent.innerHTML = content;
-            }
-            
-            if (employeeDetailModal) {
-                employeeDetailModal.classList.add('active');
-                document.body.style.overflow = 'hidden';
-            }
-        }
+    function openAddVerzekeringModal() {
+        if (addVerzekeringModal) addVerzekeringModal.classList.add("active");
+        document.body.style.overflow = "hidden";
         
-        function closeEmployeeDetailModal() {
-            if (employeeDetailModal) {
-                employeeDetailModal.classList.remove('active');
-                document.body.style.overflow = '';
-            }
-        }
+        // Stel vandaag in als standaard startdatum
+        const today = new Date().toISOString().split("T")[0];
+        document.getElementById("add_verzekering_startdatum").value = today;
         
-        function openEditEmployeeModal(employee) {
-            const formContent = document.getElementById('editEmployeeFormContent');
-            const employeeIdField = document.getElementById('edit_employeeId');
-            
-            if (employeeIdField) employeeIdField.value = employee.employeeId || employee.id || '';
-            
-            if (formContent) {
-                let formHtml = '';
-                formHtml += '<div class=\"form-group\"><label for=\"edit_first_name\">Voornaam <span class=\"required-star\">*</span></label><input type=\"text\" id=\"edit_first_name\" name=\"first_name\" value=\"' + (employee.first_name || '') + '\" required></div>';
-                formHtml += '<div class=\"form-group\"><label for=\"edit_last_name\">Achternaam <span class=\"required-star\">*</span></label><input type=\"text\" id=\"edit_last_name\" name=\"last_name\" value=\"' + (employee.last_name || '') + '\" required></div>';
-                formHtml += '<div class=\"form-group\"><label for=\"edit_email\">E-mail <span class=\"required-star\">*</span></label><input type=\"email\" id=\"edit_email\" name=\"email\" value=\"' + (employee.email || '') + '\" required></div>';
-                formHtml += '<div class=\"form-group\"><label for=\"edit_phone\">Telefoon</label><input type=\"text\" id=\"edit_phone\" name=\"phone\" value=\"' + (employee.phone || '') + '\"></div>';
-                formHtml += '<div class=\"form-group\"><label for=\"edit_functie\">Functie <span class=\"required-star\">*</span></label><input type=\"text\" id=\"edit_functie\" name=\"functie\" value=\"' + (employee.functie || employee.role || '') + '\" required></div>';
-                
-                formHtml += '<div class=\"form-group\"><label for=\"edit_status\">Status <span class=\"required-star\">*</span></label><select id=\"edit_status\" name=\"status\" required>';
-                formHtml += '<option value=\"\">Selecteer status...</option>';
-                
-                const statuses = " . json_encode($uniqueStatuses) . ";
-                statuses.forEach(function(status) {
-                    const selected = status === employee.status ? 'selected' : '';
-                    formHtml += '<option value=\"' + status + '\" ' + selected + '>' + status + '</option>';
-                });
-                
-                formHtml += '</select></div>';
-                formHtml += '<div class=\"form-group\"><label for=\"edit_afdeling\">Afdeling</label><input type=\"text\" id=\"edit_afdeling\" name=\"afdeling\" value=\"' + (employee.afdeling || employee.department || '') + '\"></div>';
-                formHtml += '<div class=\"form-group\"><label for=\"edit_hire_date\">Datum in dienst</label><input type=\"date\" id=\"edit_hire_date\" name=\"hire_date\" value=\"' + formatDateForInput(employee.hire_date) + '\"></div>';
-                formHtml += '<div class=\"form-group\"><label for=\"edit_end_date\">Datum uit dienst</label><input type=\"date\" id=\"edit_end_date\" name=\"end_date\" value=\"' + formatDateForInput(employee.end_date) + '\"></div>';
-                formHtml += '<div class=\"form-group col-span-full\"><label for=\"edit_notes\">Notities</label><textarea id=\"edit_notes\" name=\"notes\" rows=\"3\">' + (employee.notes || '') + '</textarea></div>';
-                
-                formContent.innerHTML = formHtml;
-            }
-            
-            if (editEmployeeModal) {
-                editEmployeeModal.classList.add('active');
-                document.body.style.overflow = 'hidden';
-            }
+        // Stel einddatum in op 1 jaar van nu
+        const nextYear = new Date();
+        nextYear.setFullYear(nextYear.getFullYear() + 1);
+        document.getElementById("add_verzekering_einddatum").value = nextYear.toISOString().split("T")[0];
+    }
+    
+    function closeAddVerzekeringModal() {
+        if (addVerzekeringModal) {
+            addVerzekeringModal.classList.remove("active");
+            document.getElementById("addVerzekeringForm").reset();
+            document.body.style.overflow = "";
         }
-        
-        function closeEditEmployeeModal() {
-            if (editEmployeeModal) {
-                editEmployeeModal.classList.remove('active');
-                document.body.style.overflow = '';
-            }
-        }
-        
-        function formatEmployeeDate(dateString) {
-            if (!dateString || dateString === '0000-00-00' || dateString === '0000-00-00 00:00:00') return 'N/B';
-            try {
-                const date = new Date(dateString);
-                return date.toLocaleDateString('nl-NL');
-            } catch (e) {
-                return dateString;
-            }
-        }
-        
-        function formatDateForInput(dateString) {
-            if (!dateString || dateString === '0000-00-00' || dateString === '0000-00-00 00:00:00') return '';
-            try {
-                const date = new Date(dateString);
-                return date.toISOString().split('T')[0];
-            } catch (e) {
-                return '';
-            }
-        }
-        
-        function getStatusClass(status) {
-            if (!status) return 'bg-gray-100 text-gray-800';
-            const statusLower = status.toLowerCase();
-            if (statusLower.includes('actief') || statusLower.includes('in dienst')) return 'bg-green-100 text-green-800';
-            if (statusLower.includes('verlof') || statusLower.includes('ziek')) return 'bg-yellow-100 text-yellow-800';
-            if (statusLower.includes('inactief') || statusLower.includes('uit dienst')) return 'bg-red-100 text-red-800';
-            return 'bg-gray-100 text-gray-800';
-        }
-
-        function filterEmployees() {
-            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-            const statusFilter = document.getElementById('statusFilter').value.toLowerCase();
-            const roleFilter = document.getElementById('roleFilter')?.value.toLowerCase() || '';
-            const departmentFilter = document.getElementById('departmentFilter')?.value.toLowerCase() || '';
-            
-            const table = document.getElementById('employeesTable');
-            if (!table) return;
-            
-            const tbody = table.querySelector('tbody');
-            if (!tbody) return;
-
-            const rows = tbody.querySelectorAll('tr');
-            
-            rows.forEach(row => {
-                const rowText = row.textContent.toLowerCase();
-                const status = row.dataset.status || '';
-                const role = row.dataset.role || '';
-                const department = row.dataset.department || '';
-
-                const matchesSearch = rowText.includes(searchTerm);
-                const matchesStatus = statusFilter === '' || status === statusFilter;
-                const matchesRole = roleFilter === '' || role === roleFilter;
-                const matchesDepartment = departmentFilter === '' || department === departmentFilter;
-                
-                row.style.display = (matchesSearch && matchesStatus && matchesRole && matchesDepartment) ? '' : 'none';
-            });
-        }
-        
-        document.getElementById('searchInput')?.addEventListener('input', filterEmployees);
-        document.getElementById('statusFilter')?.addEventListener('change', filterEmployees);
-        
-        const roleFilter = document.getElementById('roleFilter');
-        if (roleFilter) {
-            roleFilter.addEventListener('change', filterEmployees);
-        }
-        
-        const departmentFilter = document.getElementById('departmentFilter');
-        if (departmentFilter) {
-            departmentFilter.addEventListener('change', filterEmployees);
-        }
-
-        document.getElementById('editEmployeeForm')?.addEventListener('submit', function(e) {
-            e.preventDefault();
-            this.submit();
+    }
+    
+    if (addVerzekeringModal) {
+        addVerzekeringModal.addEventListener("click", (event) => { 
+            if (event.target === addVerzekeringModal) closeAddVerzekeringModal(); 
         });
-        
-        if (addEmployeeModal) {
-            addEmployeeModal.addEventListener('click', function(event) { 
-                if (event.target === addEmployeeModal) closeAddEmployeeModal(); 
-            });
-        }
-        
-        if (employeeDetailModal) {
-            employeeDetailModal.addEventListener('click', function(event) { 
-                if (event.target === employeeDetailModal) closeEmployeeDetailModal(); 
-            });
-        }
-        
-        if (editEmployeeModal) {
-            editEmployeeModal.addEventListener('click', function(event) { 
-                if (event.target === editEmployeeModal) closeEditEmployeeModal(); 
-            });
-        }
-    </script>
-";
+    }
 
+    // Verzekering detail modal
+    function openVerzekeringDetailModal(verzekeringData) {
+        const modalContent = document.getElementById("verzekeringDetailContent");
+        if (!modalContent || !verzekeringData) return;
+        
+        modalContent.innerHTML = "";
+        
+        const fieldsToShow = {
+            "verzekeringId": "Verzekering ID",
+            "naam": "Naam",
+            "type": "Type",
+            "maatschappij": "Maatschappij",
+            "polisnummer": "Polisnummer",
+            "premie": "Premie",
+            "dekking": "Dekking",
+            "startdatum": "Startdatum",
+            "einddatum": "Einddatum",
+            "status": "Status",
+            "droneId": "Drone ID",
+            "organisatieId": "Organisatie ID",
+            "notes": "Notities"
+        };
+
+        for (const [key, label] of Object.entries(fieldsToShow)) {
+            let value = verzekeringData[key] ?? "-";
+            
+            // Speciale verwerking voor bepaalde velden
+            if (key === "premie" && value !== "-") {
+                value = "€" + parseFloat(value).toFixed(2).replace(".", ",");
+            } 
+            else if (key === "status") {
+                const statusClass = "status-" + value.toLowerCase().replace(" ", "-");
+                value = `<span class="status-badge ${statusClass}">${value}</span>`;
+            }
+            else if (key === "startdatum" || key === "einddatum") {
+                if (value && value !== "0000-00-00") {
+                    try {
+                        const dateObj = new Date(value);
+                        value = dateObj.toLocaleDateString("nl-NL");
+                    } catch (e) {}
+                }
+            }
+            
+            modalContent.innerHTML += `
+                <div class="detail-group">
+                    <div class="detail-label">${label}</div>
+                    <div class="detail-value">${value}</div>
+                </div>`;
+        }
+        
+        if (verzekeringDetailModal) {
+            verzekeringDetailModal.classList.add("active");
+            document.body.style.overflow = "hidden";
+        }
+    }
+    
+    function closeVerzekeringDetailModal() {
+        if (verzekeringDetailModal) {
+            verzekeringDetailModal.classList.remove("active");
+            document.getElementById("verzekeringDetailContent").innerHTML = "";
+            document.body.style.overflow = "";
+        }
+    }
+    
+    if (verzekeringDetailModal) {
+        verzekeringDetailModal.addEventListener("click", (event) => {
+            if (event.target === verzekeringDetailModal) closeVerzekeringDetailModal();
+        });
+    }
+
+    // Verzekering bewerken modal
+    function openEditVerzekeringModal(verzekeringData) {
+        if (!verzekeringData || !editVerzekeringModal) return;
+        
+        // Vul het formulier in met bestaande gegevens
+        document.getElementById("edit_verzekering_id").value = verzekeringData.verzekeringId || "";
+        document.getElementById("edit_verzekering_naam").value = verzekeringData.naam || "";
+        document.getElementById("edit_verzekering_type").value = verzekeringData.type || "";
+        document.getElementById("edit_verzekering_maatschappij").value = verzekeringData.maatschappij || "";
+        document.getElementById("edit_verzekering_polisnummer").value = verzekeringData.polisnummer || "";
+        document.getElementById("edit_verzekering_premie").value = verzekeringData.premie || "";
+        document.getElementById("edit_verzekering_dekking").value = verzekeringData.dekking || "";
+        document.getElementById("edit_verzekering_startdatum").value = verzekeringData.startdatum || "";
+        document.getElementById("edit_verzekering_einddatum").value = verzekeringData.einddatum || "";
+        document.getElementById("edit_verzekering_status").value = verzekeringData.status || "Actief";
+        document.getElementById("edit_verzekering_drone").value = verzekeringData.droneId || "";
+        document.getElementById("edit_verzekering_org").value = verzekeringData.organisatieId || "";
+        document.getElementById("edit_verzekering_notes").value = verzekeringData.notes || "";
+        
+        editVerzekeringModal.classList.add("active");
+        document.body.style.overflow = "hidden";
+    }
+    
+    function closeEditVerzekeringModal() {
+        if (editVerzekeringModal) {
+            editVerzekeringModal.classList.remove("active");
+            document.body.style.overflow = "";
+        }
+    }
+    
+    if (editVerzekeringModal) {
+        editVerzekeringModal.addEventListener("click", (event) => {
+            if (event.target === editVerzekeringModal) closeEditVerzekeringModal();
+        });
+    }
+
+    // Filter functionaliteit
+    function filterVerzekeringen() {
+        const searchTerm = document.getElementById("searchInput").value.toLowerCase();
+        const maatschappijFilter = document.getElementById("maatschappijFilter").value.toLowerCase();
+        
+        const rows = document.querySelectorAll("#verzekeringenTable tbody tr");
+        
+        rows.forEach(row => {
+            const rowText = row.textContent.toLowerCase();
+            const maatschappij = row.dataset.maatschappij || "";
+            
+            const matchesSearch = rowText.includes(searchTerm);
+            const matchesMaatschappij = maatschappijFilter === "" || maatschappij === maatschappijFilter;
+            
+            row.style.display = (matchesSearch && matchesMaatschappij) ? "" : "none";
+        });
+    }
+    
+    // Event listeners voor filters
+    document.addEventListener("DOMContentLoaded", () => {
+        document.getElementById("searchInput").addEventListener("input", filterVerzekeringen);
+        document.getElementById("maatschappijFilter").addEventListener("change", filterVerzekeringen);
+    });
+</script>';
+
+// INCLUDE HEADER & TEMPLATE
 require_once __DIR__ . '/../../components/header.php';
 require_once __DIR__ . '/../layouts/template.php';

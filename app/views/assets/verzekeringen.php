@@ -261,33 +261,11 @@ $bodyContent = '
     <div class="px-6 pt-4">
         <div class="filter-bar">
             <div class="filter-group">
-                <span class="filter-label">Status:</span>
-                <select id="statusFilter" class="filter-select">
-                    <option value="">Alle statussen</option>';
-foreach ($uniqueStatuses as $status) {
-    $bodyContent .= '<option value="' . htmlspecialchars(strtolower($status)) . '">' . htmlspecialchars($status) . '</option>';
-}
-$bodyContent .= '
-                </select>
-            </div>
-            
-            <div class="filter-group">
                 <span class="filter-label">Maatschappij:</span>
                 <select id="maatschappijFilter" class="filter-select">
                     <option value="">Alle maatschappijen</option>';
 foreach ($uniqueMaatschappijen as $maatschappij) {
     $bodyContent .= '<option value="' . htmlspecialchars(strtolower($maatschappij)) . '">' . htmlspecialchars($maatschappij) . '</option>';
-}
-$bodyContent .= '
-                </select>
-            </div>
-            
-            <div class="filter-group">
-                <span class="filter-label">Type:</span>
-                <select id="typeFilter" class="filter-select">
-                    <option value="">Alle types</option>';
-foreach ($uniqueTypes as $type) {
-    $bodyContent .= '<option value="' . htmlspecialchars(strtolower($type)) . '">' . htmlspecialchars($type) . '</option>';
 }
 $bodyContent .= '
                 </select>
@@ -724,33 +702,25 @@ $bodyContent .= '
     // Filter functionaliteit
     function filterVerzekeringen() {
         const searchTerm = document.getElementById("searchInput").value.toLowerCase();
-        const statusFilter = document.getElementById("statusFilter").value.toLowerCase();
         const maatschappijFilter = document.getElementById("maatschappijFilter").value.toLowerCase();
-        const typeFilter = document.getElementById("typeFilter").value.toLowerCase();
         
         const rows = document.querySelectorAll("#verzekeringenTable tbody tr");
         
         rows.forEach(row => {
             const rowText = row.textContent.toLowerCase();
-            const status = row.dataset.status || "";
             const maatschappij = row.dataset.maatschappij || "";
-            const type = row.dataset.type || "";
             
             const matchesSearch = rowText.includes(searchTerm);
-            const matchesStatus = statusFilter === "" || status === statusFilter;
             const matchesMaatschappij = maatschappijFilter === "" || maatschappij === maatschappijFilter;
-            const matchesType = typeFilter === "" || type === typeFilter;
             
-            row.style.display = (matchesSearch && matchesStatus && matchesMaatschappij && matchesType) ? "" : "none";
+            row.style.display = (matchesSearch && matchesMaatschappij) ? "" : "none";
         });
     }
     
     // Event listeners voor filters
     document.addEventListener("DOMContentLoaded", () => {
         document.getElementById("searchInput").addEventListener("input", filterVerzekeringen);
-        document.getElementById("statusFilter").addEventListener("change", filterVerzekeringen);
         document.getElementById("maatschappijFilter").addEventListener("change", filterVerzekeringen);
-        document.getElementById("typeFilter").addEventListener("change", filterVerzekeringen);
     });
 </script>';
 

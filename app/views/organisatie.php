@@ -18,7 +18,7 @@ $loggedInUserId = $_SESSION['user']['id'];
 $organisationIdToView = $_GET['id'] ?? ($_SESSION['selected_organisation_id'] ?? null);
 
 if (!defined('MAIN_API_URL')) {
-    define('MAIN_API_URL', 'http://devserv01.holdingthedrones.com:3006');
+    define('MAIN_API_URL', 'http://devserv01.holdingthedrones.com:4539');
 }
 $mainApiBaseUrl = MAIN_API_URL;
 
@@ -27,11 +27,24 @@ function callMainApi(string $url, string $method = 'GET', array $payload = []): 
     $ch = curl_init($url);
     $options = [
         CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FAILONERROR => true,
         CURLOPT_HTTPHEADER => ['Accept: application/json'],
         CURLOPT_TIMEOUT => 20,
     ];
+
+    if ($method === 'POST') {
+        $options[CURLOPT_POST] = true;
+        $options[CURLOPT_POSTFIELDS] = json_encode($payload);
+        $options[CURLOPT_HTTPHEADER][] = 'Content-Type: application/json';
+    }
+
     curl_setopt_array($ch, $options);
     $response = curl_exec($ch);
+
+    if (curl_errno($ch)) {
+        return ['error' => "CURL Fout: " . curl_error($ch)];
+    }
+
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
@@ -63,7 +76,8 @@ if ($organisationIdToView !== null) {
         $organization = $orgDetailsResponse;
         $apiOrgDetailsSuccess = true;
     } else {
-        $pageErrorMessage = "Fout bij laden organisatie details: " . ($orgDetailsResponse['error'] ?? 'Onbekend.');
+        $errorMsg = $orgDetailsResponse['error'] ?? 'Onbekende fout';
+        $pageErrorMessage = "Fout bij laden organisatie details: " . htmlspecialchars($errorMsg);
     }
 } else {
     $pageErrorMessage = "Geen organisatie geselecteerd. Gebruik het selectiescherm.";
@@ -76,11 +90,13 @@ if ($apiOrgDetailsSuccess) {
         $stats['personeel']['totaal'] = count($personnelResponse);
         $stats['personeel']['actief'] = count(array_filter($personnelResponse, fn($p) => ($p['isActive'] ?? 0) == 1));
     }
+
     $dronesResponse = callMainApi($mainApiBaseUrl . '/drones?organisatieId=' . $organisationIdToView);
     if (!isset($dronesResponse['error'])) {
         $stats['drones']['totaal'] = count($dronesResponse);
         $stats['drones']['actief'] = count(array_filter($dronesResponse, fn($d) => ($d['isActive'] ?? 0) == 1));
     }
+
     $flightsResponse = callMainApi($mainApiBaseUrl . '/vluchten?DFPPVlucht_OrganisatieId=' . $organisationIdToView);
     if (!isset($flightsResponse['error'])) {
         $stats['vluchten']['totaal'] = count($flightsResponse);
@@ -97,7 +113,8 @@ if ($apiOrgDetailsSuccess) {
             return false;
         }));
     }
-    $assetsResponse = callMainApi($mainApiBaseUrl . '/overigeassets?eigenaar=' . $organisationIdToView);
+
+    $assetsResponse = callMainApi($mainApiBaseUrl . '/overige_assets?eigenaar=' . $organisationIdToView);
     if (!isset($assetsResponse['error'])) {
         $stats['assets']['totaal'] = count($assetsResponse);
     }
@@ -124,29 +141,21 @@ $orgLogoUrl = $organization['logoUrl'] ?? 'https://via.placeholder.com/120/EEEEE
             background-color: #f0f2f5;
             font-family: 'Montserrat', sans-serif;
             color: #333;
-            /* GEEN PADDING MEER HIER, GESTUURD DOOR CONTAINER */
         }
 
         .main-container {
-            /* Verwijdert max-width voor volledige breedte, voegt horizontal padding toe */
             width: 100%;
             margin: 0 auto;
-            /* Centrale positie */
             background-color: #fff;
             border-radius: 0;
-            /* Geen randen, gaat volledig van edge to edge */
             box-shadow: none;
-            /* Geen schaduw op de hoofdcontainer */
             overflow: hidden;
             padding: 0 40px;
-            /* Horizontale padding NU OP DE CONTAINER ZELF */
         }
 
-        /* Voeg responsieve padding toe voor kleinere schermen */
         @media (max-width: 768px) {
             .main-container {
                 padding: 0 15px;
-                /* Minder padding op kleine schermen */
             }
         }
 
@@ -401,17 +410,45 @@ $orgLogoUrl = $organization['logoUrl'] ?? 'https://via.placeholder.com/120/EEEEE
                     <div class="detail-item"><i class="fas fa-globe"></i>Land: <strong><?= htmlspecialchars($organization['land'] ?? 'N.v.t.') ?></strong></div>
                     <div class="detail-item"><i class="fas fa-power-off"></i>Actief: <strong><?= ($organization['isActive'] ?? 0) ? 'Ja' : 'Nee' ?></strong></div>
                     <div class="detail-item"><i class="fas fa-id-badge"></i>Entry ID: <strong><?= htmlspecialchars($organization['_entry_ID'] ?? 'N.v.t.') ?></strong></div>
-                    <div class="detail-item"><i class="fas fa-calendar-alt"></i>Entry Datum: <strong><?= htmlspecialchars((isset($organization['_entry_Date']) ? (new DateTime($organization['_entry_Date']))->format('Y-m-d H:i') : 'N.v.t.')) ?></strong></div>
+                    <div class="detail-item"><i class="fas fa-calendar-alt"></i>Entry Datum: <strong>
+                            <?php
+                            if (isset($organization['_entry_Date'])) {
+                                try {
+                                    $date = new DateTime($organization['_entry_Date']);
+                                    echo htmlspecialchars($date->format('Y-m-d H:i'));
+                                } catch (Exception $e) {
+                                    echo 'Ongeldige datum';
+                                }
+                            } else {
+                                echo 'N.v.t.';
+                            }
+                            ?>
+                        </strong></div>
                 </div>
             </div>
 
-            <!-- Contactgegevens -->
+            <!-- Contactgegevens Dynamisch -->
             <div class="section-content">
                 <h2 class="section-title">Contact Informatie</h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-4">
-                    <div class="detail-item"><i class="fas fa-phone"></i>Telefoon: <strong><?= htmlspecialchars($organization['telefoon'] ?? 'N.v.t.') ?></strong></div>
-                    <div class="detail-item"><i class="fas fa-envelope"></i>E-mail: <strong><?= htmlspecialchars($organization['email'] ?? 'N.v.t.') ?></strong></div>
-                    <div class="detail-item"><i class="fas fa-link"></i>Website: <strong><?= htmlspecialchars($organization['website'] ?? 'N.v.t.') ?></strong></div>
+                    <div class="detail-item">
+                        <i class="fas fa-phone"></i>Telefoon:
+                        <strong><?= !empty($organization['telefoon']) ? htmlspecialchars($organization['telefoon']) : 'N.v.t.' ?></strong>
+                    </div>
+                    <div class="detail-item">
+                        <i class="fas fa-envelope"></i>E-mail:
+                        <strong><?= !empty($organization['email']) ? htmlspecialchars($organization['email']) : 'N.v.t.' ?></strong>
+                    </div>
+                    <div class="detail-item">
+                        <i class="fas fa-link"></i>Website:
+                        <strong>
+                            <?php if (!empty($organization['website'])): ?>
+                                <a href="<?= htmlspecialchars($organization['website']) ?>" target="_blank" rel="noopener noreferrer"><?= htmlspecialchars($organization['website']) ?></a>
+                            <?php else: ?>
+                                N.v.t.
+                            <?php endif; ?>
+                        </strong>
+                    </div>
                 </div>
             </div>
 
