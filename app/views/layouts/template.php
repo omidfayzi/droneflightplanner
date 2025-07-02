@@ -157,6 +157,10 @@ if (is_dir($componentsDir)) {
     <script src="/src/app/assets/scripts/idin.js"></script>
 
     <style>
+        body {
+            overflow-y: hidden;
+        }
+
         .bg-custom-gray {
             background-color: #313234;
         }
@@ -258,6 +262,44 @@ if (is_dir($componentsDir)) {
         <!-- Main Content of the page -->
         <div class="sm:ml-64 h-[90h] bg-gray-50 p-8 overflow-hidden">
             <?php echo $bodyContent; ?>
+            <footer class="m-0 py-6 text-gray-300">
+                <div class="container mx-auto px-4">
+                    <div class="flex flex-col md:flex-row justify-between items-center">
+                        <div class="mb-4 md:mb-0">
+                            <div class="flex items-center space-x-3">
+                                <div class="bg-gray-700 p-2 rounded-lg">
+                                    <i class="fa-solid fa-drone text-blue-400 text-xl"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-lm font-semibold">
+                                        <p><?php echo date('Y'); ?> Holding The Drones. Alle rechten voorbehouden.</p>
+                                    </h3>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col items-center md:items-end">
+                            <div class="flex space-x-6 mb-3">
+                                <a href="/app/views/legal.php"
+                                    class="text-gray-300 hover:text-white transition-colors"
+                                    title="Privacyverklaring">
+                                    <i class="fa-solid fa-lock mr-1"></i> Privacy
+                                </a>
+                                <a href="/app/views/legal.php"
+                                    class="text-gray-300 hover:text-white transition-colors"
+                                    title="Algemene Verordening Gegevensbescherming">
+                                    <i class="fa-solid fa-file-contract mr-1"></i> AVG
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-gray-700 mt-6 pt-4 text-center text-gray-500 text-sm">
+                        <p>&copy; <?php echo date('Y'); ?> <?php echo $orgNaam ? htmlspecialchars($orgNaam) : "Drone Flight Planner"; ?>. Alle rechten voorbehouden.</p>
+                        <p class="mt-1">v1.2.0 | Systeemstatus: <span class="text-green-400">Operationeel</span></p>
+                    </div>
+                </div>
+            </footer>
         </div>
 
     <?php else: ?>

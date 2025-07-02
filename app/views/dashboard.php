@@ -115,12 +115,12 @@ sort($uniquePilots);
 
 // Dashboard content
 $bodyContent = "
-    <div class='h-[83.5vh] bg-gray-100 shadow-md rounded-tl-xl w-13/15'>
-        <div class='p-6 overflow-y-auto max-h-[calc(90vh-200px)]'>";
+    <div class='h-[83.5vh] bg-gray-100 shadow-md rounded-tl-xl w-13/15 main_container'>
+        <div class='p-6 overflow-y-auto nawid'>";
 
 if ($apiError) {
     $bodyContent .= "
-        <div class='alert alert-danger mb-4' role='alert'>
+        <div class='alert alert-danger mb-4' role='alert sub_container'>
             Fout bij laden vluchten: " . htmlspecialchars($apiError) . "
         </div>";
 }
@@ -200,7 +200,7 @@ $bodyContent .= "
             </div>
 
             <!-- Tabel met Recente Vluchten -->
-            <div class='bg-white rounded-xl shadow overflow-hidden'>
+            <div class='bg-white rounded-xl shadow overflow-hidden data_grid'>
                 <div class='p-6 border-b border-gray-200 flex justify-between items-center'>
                     <h3 class='text-xl font-semibold text-gray-800'>Recente Operaties</h3>
                     <a href='/app/view/flight-planning/step1.php' class='flex items-center text-blue-600 hover:text-blue-800 transition'>
@@ -444,6 +444,19 @@ $bodyContent .= "
             .filter-select, .filter-search {
                 width: 100%;
             }
+        }
+
+        .main_container {
+            max-height: 80vh;
+        }
+
+        .sub_container {
+            max-height: 75vh;
+        }
+
+        .data_grid {
+            max-height: 45vh;
+            overflow-y: auto;
         }
     </style>
 ";
