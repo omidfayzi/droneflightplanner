@@ -1,84 +1,713 @@
 <?php
 // /var/www/public/frontend/pages/flight-planning/step3.php
-// Vluchtplanning Stap 3
+// Vluchtplanning Stap 3 - Mitigatiemaatregelen & Compliance op basis van SORA resultaten
 
 session_start();
-require_once __DIR__ . '/../../../config/config.php';
-require_once __DIR__ . '/../../../functions.php';
 
-// Sla de gegevens van stap 2 op in de sessie
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $_SESSION['flight_planning']['step2'] = $_POST;
+// Check of alle benodigde sessie data aanwezig is
+$soraResult = $_SESSION['sora_calculation_result'] ?? null;
+$soraVersion = $_SESSION['sora_version'] ?? null;
+$flightData = $_SESSION['flight_data'] ?? [];
+$userName = $_SESSION['user']['first_name'] ?? 'Onbekende Gebruiker';
+
+if (!$soraResult) {
+    $_SESSION['form_error'] = "SORA berekening niet gevonden. Voltooi eerst stap 2.";
+    header("Location: step2.php");
+    exit;
 }
 
-// Stel variabelen in voor template.php
-$showHeader      = 1;
-$userName        = $_SESSION['user']['first_name'] ?? 'Onbekend';
-$headTitle       = "Goedkeuring aanvragen";
-$gobackUrl       = 0;
-$rightAttributes = 0;
+// Parse SORA resultaten
+$sailLevel = $soraResult['sail2_0'] ?? $soraResult['SAIL'] ?? 0;
+$arcLevel = $soraResult['authorization'] ?? $soraResult['ARC'] ?? 'N/A';
+$finalGrc = $soraResult['final_score_grc2_0'] ?? $soraResult['FINAL_GRC'] ?? 0;
+$osoAssurance = $soraResult['oso_assurance2_0'] ?? [];
+$osoIntegrity = $soraResult['oso_integrity2_0'] ?? [];
 
-// Body content voor Vluchtplanning Stap 3
-$bodyContent = <<<HTML
-<div class="h-[83.5vh] bg-gray-100 shadow-md rounded-tl-xl w-13/15">
-    <!-- Stappenbalk -->
-    <div class="p-4 bg-gray-100">
-        <div class="flex justify-center items-center space-x-4">
-            <span class="w-8 h-8 bg-black text-white rounded-full flex items-center justify-center">1</span>
-            <div class="flex-1 h-1 bg-black"></div>
-            <span class="w-8 h-8 bg-black text-white rounded-full flex items-center justify-center">2</span>
-            <div class="flex-1 h-1 bg-black"></div>
-            <span class="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold">3</span>
-            <div class="flex-1 h-1 bg-gray-300"></div>
-            <span class="w-8 h-8 bg-gray-300 text-gray-600 rounded-full flex items-center justify-center">4</span>
+// Bepaal risico niveau
+$riskLevel = 'low';
+$riskLabel = 'Laag Risico';
+$riskColor = 'green';
+if ($sailLevel >= 5) {
+    $riskLevel = 'high';
+    $riskLabel = 'Hoog Risico';
+    $riskColor = 'red';
+} elseif ($sailLevel >= 3) {
+    $riskLevel = 'medium';
+    $riskLabel = 'Gemiddeld Risico';
+    $riskColor = 'yellow';
+}
+
+// Bepaal vereiste documenten op basis van SAIL level
+function getRequiredDocuments($sailLevel, $arcLevel)
+{
+    $docs = [
+        'basic' => [
+            'flight_manual' => 'Vluchthandboek',
+            'pilot_certificate' => 'Piloot Certificaat',
+            'insurance_proof' => 'Verzekeringsbewijs',
+            'maintenance_log' => 'Onderhoudslogboek'
+        ]
+    ];
+
+
+    if ($sailLevel >= 4) {
+        $docs['high'] = [
+            'risk_assessment' => 'Uitgebreide Risicobeoordeling',
+            'contingency_procedures' => 'Contingency Procedures',
+            'third_party_validation' => 'Derde Partij Validatie',
+            'crm_training_cert' => 'CRM Training Certificaat'
+        ];
+    }
+
+    if (strpos($arcLevel, 'ARC-A') !== false || strpos($arcLevel, 'ARC-D') !== false) {
+        $docs['airspace'] = [
+            'airspace_authorization' => 'Luchtruim Autorisatie',
+            'atc_coordination' => 'ATC Coördinatie Document'
+        ];
+    }
+
+    return $docs;
+}
+
+// Bepaal vereiste mitigatiemaatregelen
+function getRequiredMitigations($sailLevel, $osoAssurance, $osoIntegrity)
+{
+    $mitigations = [];
+
+    // Basis mitigaties voor alle operaties
+    $mitigations['basic'] = [
+        'pre_flight_check' => 'Pre-flight Inspectie Checklist',
+        'weather_assessment' => 'Weer Beoordeling',
+        'battery_management' => 'Batterij Management Plan'
+    ];
+
+    if ($sailLevel >= 2) {
+        $mitigations['operational'] = [
+            'vo_assignment' => 'Visual Observer Toewijzing',
+            'communication_plan' => 'Communicatie Plan',
+            'flight_termination' => 'Flight Termination Procedure'
+        ];
+    }
+
+    if ($sailLevel >= 4) {
+        $mitigations['advanced'] = [
+            'redundant_systems' => 'Redundante Systemen',
+            'ground_personnel' => 'Getraind Grondpersoneel',
+            'emergency_response' => 'Emergency Response Team'
+        ];
+    }
+
+    // OSO specifieke mitigaties
+    if (count($osoAssurance) > 20) {
+        $mitigations['oso_specific'] = [
+            'competent_authority_approval' => 'Competent Authority Goedkeuring',
+            'third_party_oversight' => 'Derde Partij Toezicht',
+            'continuous_monitoring' => 'Continue Monitoring Systemen'
+        ];
+    }
+
+    return $mitigations;
+}
+
+$requiredDocs = getRequiredDocuments($sailLevel, $arcLevel);
+$requiredMitigations = getRequiredMitigations($sailLevel, $osoAssurance, $osoIntegrity);
+
+// Verwerk form submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $_SESSION['step3_data'] = $_POST;
+    $_SESSION['compliance_status'] = [
+        'documents_uploaded' => count($_POST['uploaded_docs'] ?? []),
+        'mitigations_confirmed' => count($_POST['mitigations'] ?? []),
+        'timestamp' => date('Y-m-d H:i:s')
+    ];
+
+    header("Location: step4.php");
+    exit;
+}
+
+$formError = $_SESSION['form_error'] ?? '';
+unset($_SESSION['form_error']);
+?>
+
+<!DOCTYPE html>
+<html lang="nl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flight Planning - Step 3 | DroneFlightPlanner</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#2D69E7",
+                        primaryDark: "#1F2937",
+                        secondary: "#101826",
+                        lightBg: "#F7F9F8",
+                        cardBg: "#FEFEFE",
+                        accent: "#FFF8C3",
+                        success: "#DCFDE6",
+                        borderColor: "#EAEAE6",
+                        subtleBg: "#F2F5F6"
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F2F5F6;
+            color: #101826;
+        }
+
+        .card-shadow {
+            box-shadow: 0 4px 20px rgba(16, 24, 38, 0.08);
+        }
+
+        .progress-step {
+            transition: all 0.3s ease;
+        }
+
+        .progress-step.active {
+            color: black;
+        }
+
+        .progress-step.completed {
+            color: black;
+        }
+
+        .risk-indicator {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .risk-low {
+            background: #10B981;
+            color: white;
+        }
+
+        .risk-medium {
+            background: #F59E0B;
+            color: white;
+        }
+
+        .risk-high {
+            background: #EF4444;
+            color: white;
+        }
+
+        .requirement-card {
+            transition: all 0.2s ease;
+            border: 2px solid #EAEAE6;
+        }
+
+        .requirement-card.completed {
+            border-color: #10B981;
+            background: #DCFDE6;
+        }
+
+        .upload-zone {
+            border: 2px dashed #EAEAE6;
+            transition: all 0.3s ease;
+        }
+
+        .upload-zone:hover {
+            border-color: #2D69E7;
+            background: #F0F7FF;
+        }
+
+        .upload-zone.dragover {
+            border-color: #10B981;
+            background: #DCFDE6;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: #EAEAE6;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #10B981, #059669);
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen flex flex-col bg-lightBg">
+    <!-- Header -->
+    <header class="bg-white shadow-sm">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center">
+                <P class="text-l">
+                    <span class="font-bold">HTD</span> DroneFlightPlanner
+                </P>
+            </div>
+            <div class="flex items-center space-x-4">
+                <div class="flex items-center bg-subtleBg py-1 px-3 rounded-full">
+                    <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white font-bold mr-2">U</div>
+                    <span class="font-medium text-sm"><?= htmlspecialchars($userName) ?></span>
+                </div>
+            </div>
         </div>
-    </div>
+    </header>
 
-    <!-- Content -->
-    <div class="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
-        <h2 class="text-xl font-bold mb-4 text-gray-800">Stap 3: Goedkeuring aanvragen</h2>
-        <form action="step4.php" method="post" class="space-y-6">
-            <div class="bg-white rounded-lg shadow-md p-4">
-                <h3 class="text-lg font-semibold mb-3 text-gray-700">Vereiste vergunningen</h3>
-                <div class="space-y-3">
-                    <div class="flex items-center">
-                        <input type="checkbox" id="airspace_permission" name="permissions[]" value="airspace"
-                            class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                        <label for="airspace_permission" class="ml-2 text-sm text-gray-700">Luchtruimtoestemming</label>
+    <main class="flex-grow container mx-auto px-4 py-8">
+        <div class="max-w-6xl mx-auto">
+            <div class="mb-10 text-center">
+                <h1 class="text-3xl font-bold text-secondary mb-2">Compliance & Mitigatiemaatregelen</h1>
+                <p class="text-gray-600">Stap 3: Voltooi de vereiste maatregelen voor uw vlucht</p>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="mb-10">
+                <div class="flex justify-between relative">
+                    <div class="absolute h-1 bg-gray-200 top-1/2 left-0 right-0 -translate-y-1/2 -z-10"></div>
+
+                    <div class="progress-step completed flex flex-col items-center">
+                        <div class="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center text-white font-bold mb-2">
+                            <i class="fas fa-check"></i>
+                        </div>
+                        <span class="text-sm font-medium">Basisgegevens</span>
                     </div>
-                    <div class="flex items-center">
-                        <input type="checkbox" id="privacy_statement" name="permissions[]" value="privacy"
-                            class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                        <label for="privacy_statement" class="ml-2 text-sm text-gray-700">Privacyverklaring</label>
+
+                    <div class="progress-step completed flex flex-col items-center">
+                        <div class="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center text-white font-bold mb-2">
+                            <i class="fas fa-check"></i>
+                        </div>
+                        <span class="text-sm font-medium">SORA Analyse</span>
                     </div>
-                    <div class="flex items-center">
-                        <input type="checkbox" id="risk_acceptance" name="permissions[]" value="risk"
-                            class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                        <label for="risk_acceptance" class="ml-2 text-sm text-gray-700">Risicoacceptatie</label>
+
+                    <div class="progress-step active flex flex-col items-center">
+                        <div class="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-white font-bold mb-2">3</div>
+                        <span class="text-sm font-medium">Mitigaties</span>
+                    </div>
+
+                    <div class="progress-step flex flex-col items-center">
+                        <div class="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold mb-2">4</div>
+                        <span class="text-sm font-medium">Beoordeling</span>
                     </div>
                 </div>
             </div>
-            <div class="bg-white rounded-lg shadow-md p-4">
-                <h3 class="text-lg font-semibold mb-3 text-gray-700">Documentupload</h3>
-                <div class="border-2 border-dashed border-gray-300 p-6 text-center rounded-lg">
-                    <p class="text-sm text-gray-500">Sleep bestanden hierheen</p>
-                    <p class="text-sm text-gray-500">of</p>
-                    <label for="file_upload" class="cursor-pointer text-blue-600 hover:text-blue-800">Selecteer bestanden</label>
-                    <input type="file" id="file_upload" name="documents[]" multiple class="hidden">
+
+            <?php if (!empty($formError)): ?>
+                <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+                    <i class="fas fa-exclamation-circle mr-2"></i>
+                    <?= htmlspecialchars($formError) ?>
+                </div>
+            <?php endif; ?>
+
+            <!-- SORA Results Summary -->
+            <div class="bg-white card-shadow rounded-xl p-6 mb-8">
+                <h3 class="text-xl font-bold text-secondary mb-4 flex items-center">
+                    <i class="fas fa-chart-line mr-3 text-primary"></i>
+                    SORA Risicoanalyse Resultaat
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div class="text-center p-4 bg-subtleBg rounded-lg">
+                        <div class="text-2xl font-bold text-primary mb-1">SAIL <?= $sailLevel ?></div>
+                        <div class="risk-indicator risk-<?= $riskLevel ?> inline-block"><?= $riskLabel ?></div>
+                    </div>
+                    <div class="text-center p-4 bg-subtleBg rounded-lg">
+                        <div class="text-lg font-bold text-secondary mb-1">ARC</div>
+                        <div class="text-primary font-medium"><?= htmlspecialchars($arcLevel) ?></div>
+                    </div>
+                    <div class="text-center p-4 bg-subtleBg rounded-lg">
+                        <div class="text-lg font-bold text-secondary mb-1">OSO Assurance</div>
+                        <div class="text-primary font-medium"><?= count($osoAssurance) ?> eisen</div>
+                    </div>
+                    <div class="text-center p-4 bg-subtleBg rounded-lg">
+                        <div class="text-lg font-bold text-secondary mb-1">OSO Integrity</div>
+                        <div class="text-primary font-medium"><?= count($osoIntegrity) ?> eisen</div>
+                    </div>
                 </div>
             </div>
-            <div class="flex justify-between items-center mt-6">
-                <a href="step2.php" class="text-gray-500 hover:text-gray-700 flex items-center text-sm">
-                    <i class="fa-solid fa-arrow-left mr-2"></i> Vorige stap
-                </a>
-                <button type="submit" class="bg-black text-white px-6 py-3 rounded-full hover:bg-gray-800 transition-colors flex items-center">
-                    Aanvraag indienen <i class="fa-solid fa-arrow-right ml-2"></i>
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-HTML;
 
-require_once __DIR__ . '/../../components/header.php';
-require_once __DIR__ . '/../layouts/template.php';
+            <!-- Compliance Progress -->
+            <div class="bg-white card-shadow rounded-xl p-6 mb-8">
+                <h3 class="text-lg font-bold text-secondary mb-4">Compliance Voortgang</h3>
+                <div class="progress-bar mb-2">
+                    <div class="progress-fill" style="width: 0%" id="overallProgress"></div>
+                </div>
+                <p class="text-sm text-gray-600" id="progressText">0% voltooid - Begin met het uploaden van documenten</p>
+            </div>
+
+            <form action="step3.php" method="post" enctype="multipart/form-data" id="complianceForm">
+
+                <!-- Required Documents Section -->
+                <div class="bg-white card-shadow rounded-xl overflow-hidden mb-8">
+                    <div class="p-6 border-b border-borderColor bg-subtleBg">
+                        <h3 class="text-xl font-bold text-secondary flex items-center">
+                            <i class="fas fa-file-alt mr-3 text-primary"></i>
+                            Vereiste Documenten
+                        </h3>
+                        <p class="text-gray-600 text-sm mt-1">Upload de benodigde documenten voor uw SAIL <?= $sailLevel ?> operatie</p>
+                    </div>
+
+                    <div class="p-6 space-y-6">
+                        <?php foreach ($requiredDocs as $category => $docs): ?>
+                            <div class="border border-borderColor rounded-lg p-4">
+                                <h4 class="font-semibold text-secondary mb-3 capitalize">
+                                    <i class="fas fa-folder mr-2 text-primary"></i>
+                                    <?= ucfirst($category) ?> Documenten
+                                </h4>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <?php foreach ($docs as $docKey => $docName): ?>
+                                        <div class="requirement-card rounded-lg p-4">
+                                            <div class="flex items-center justify-between mb-3">
+                                                <label class="font-medium text-sm"><?= htmlspecialchars($docName) ?></label>
+                                                <i class="fas fa-upload text-gray-400"></i>
+                                            </div>
+                                            <div class="upload-zone rounded border-2 border-dashed p-4 text-center cursor-pointer"
+                                                onclick="document.getElementById('file_<?= $docKey ?>').click()">
+                                                <p class="text-sm text-gray-600">Klik om bestand te selecteren</p>
+                                                <input type="file" id="file_<?= $docKey ?>" name="documents[<?= $docKey ?>]"
+                                                    class="hidden" accept=".pdf,.doc,.docx,.jpg,.png"
+                                                    onchange="handleFileUpload(this, '<?= $docKey ?>')">
+                                            </div>
+                                            <div id="file_status_<?= $docKey ?>" class="mt-2 text-sm text-gray-500"></div>
+                                            <input type="hidden" name="uploaded_docs[]" value="<?= $docKey ?>" disabled>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+
+                <!-- Required Mitigations Section -->
+                <div class="bg-white card-shadow rounded-xl overflow-hidden mb-8">
+                    <div class="p-6 border-b border-borderColor bg-subtleBg">
+                        <h3 class="text-xl font-bold text-secondary flex items-center">
+                            <i class="fas fa-shield-alt mr-3 text-primary"></i>
+                            Mitigatiemaatregelen
+                        </h3>
+                        <p class="text-gray-600 text-sm mt-1">Bevestig dat u de volggende veiligheidsmaatregelen heeft geïmplementeerd</p>
+                    </div>
+
+                    <div class="p-6 space-y-6">
+                        <?php foreach ($requiredMitigations as $category => $mitigations): ?>
+                            <div class="border border-borderColor rounded-lg p-4">
+                                <h4 class="font-semibold text-secondary mb-3 capitalize">
+                                    <i class="fas fa-cog mr-2 text-primary"></i>
+                                    <?= ucfirst(str_replace('_', ' ', $category)) ?> Mitigaties
+                                </h4>
+                                <div class="space-y-3">
+                                    <?php foreach ($mitigations as $mitigationKey => $mitigationName): ?>
+                                        <div class="flex items-center p-3 border border-borderColor rounded-lg hover:bg-subtleBg transition-colors">
+                                            <input type="checkbox" id="mitigation_<?= $mitigationKey ?>"
+                                                name="mitigations[]" value="<?= $mitigationKey ?>"
+                                                class="mr-3 text-primary focus:ring-primary"
+                                                onchange="updateProgress()">
+                                            <label for="mitigation_<?= $mitigationKey ?>" class="flex-1 font-medium text-sm cursor-pointer">
+                                                <?= htmlspecialchars($mitigationName) ?>
+                                            </label>
+                                            <i class="fas fa-info-circle text-gray-400 cursor-pointer"
+                                                title="Klik voor meer informatie over deze mitigatiemaatregel"></i>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+
+                <!-- OSO Requirements (Condensed) -->
+                <?php if (count($osoAssurance) > 0 || count($osoIntegrity) > 0): ?>
+                    <div class="bg-white card-shadow rounded-xl overflow-hidden mb-8">
+                        <div class="p-6 border-b border-borderColor bg-subtleBg">
+                            <h3 class="text-xl font-bold text-secondary flex items-center">
+                                <i class="fas fa-clipboard-check mr-3 text-primary"></i>
+                                OSO Veiligheidseisen
+                            </h3>
+                            <p class="text-gray-600 text-sm mt-1">Overzicht van alle OSO (Operational Safety Objectives) eisen</p>
+                        </div>
+
+                        <div class="p-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <?php if (count($osoAssurance) > 0): ?>
+                                    <div>
+                                        <h4 class="font-semibold text-secondary mb-3">
+                                            Assurance Eisen (<?= count($osoAssurance) ?>)
+                                        </h4>
+                                        <div class="max-h-60 overflow-y-auto space-y-2">
+                                            <?php foreach (array_slice($osoAssurance, 0, 5) as $oso): ?>
+                                                <div class="p-3 bg-subtleBg rounded-lg text-sm">
+                                                    <div class="font-medium"><?= htmlspecialchars($oso['oso_title'] ?? 'OSO Requirement') ?></div>
+                                                    <div class="text-gray-600 text-xs mt-1">Level: <?= htmlspecialchars($oso['level'] ?? 'N/A') ?></div>
+                                                </div>
+                                            <?php endforeach; ?>
+                                            <?php if (count($osoAssurance) > 5): ?>
+                                                <div class="text-center">
+                                                    <button type="button" class="text-primary text-sm hover:underline" onclick="toggleOSODetails('assurance')">
+                                                        Toon alle <?= count($osoAssurance) ?> assurance eisen
+                                                    </button>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+
+                                <?php if (count($osoIntegrity) > 0): ?>
+                                    <div>
+                                        <h4 class="font-semibold text-secondary mb-3">
+                                            Integrity Eisen (<?= count($osoIntegrity) ?>)
+                                        </h4>
+                                        <div class="max-h-60 overflow-y-auto space-y-2">
+                                            <?php foreach (array_slice($osoIntegrity, 0, 5) as $oso): ?>
+                                                <div class="p-3 bg-subtleBg rounded-lg text-sm">
+                                                    <div class="font-medium"><?= htmlspecialchars($oso['oso_title'] ?? 'OSO Requirement') ?></div>
+                                                    <div class="text-gray-600 text-xs mt-1">Level: <?= htmlspecialchars($oso['level'] ?? 'N/A') ?></div>
+                                                </div>
+                                            <?php endforeach; ?>
+                                            <?php if (count($osoIntegrity) > 5): ?>
+                                                <div class="text-center">
+                                                    <button type="button" class="text-primary text-sm hover:underline" onclick="toggleOSODetails('integrity')">
+                                                        Toon alle <?= count($osoIntegrity) ?> integrity eisen
+                                                    </button>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
+                <!-- Final Declarations -->
+                <div class="bg-white card-shadow rounded-xl overflow-hidden mb-8">
+                    <div class="p-6 border-b border-borderColor bg-subtleBg">
+                        <h3 class="text-xl font-bold text-secondary flex items-center">
+                            <i class="fas fa-certificate mr-3 text-primary"></i>
+                            Verklaringen & Akkoord
+                        </h3>
+                    </div>
+
+                    <div class="p-6 space-y-4">
+                        <div class="flex items-start">
+                            <input type="checkbox" id="compliance_declaration" name="declarations[]" value="compliance"
+                                class="mr-3 mt-1 text-primary focus:ring-primary" required>
+                            <label for="compliance_declaration" class="text-sm">
+                                <strong>Compliance Verklaring:</strong> Ik verklaar dat alle bovenstaande documenten en mitigatiemaatregelen correct zijn geïmplementeerd en dat de vlucht zal worden uitgevoerd conform de SORA <?= htmlspecialchars($soraVersion) ?> richtlijnen.
+                            </label>
+                        </div>
+
+                        <div class="flex items-start">
+                            <input type="checkbox" id="risk_acceptance" name="declarations[]" value="risk"
+                                class="mr-3 mt-1 text-primary focus:ring-primary" required>
+                            <label for="risk_acceptance" class="text-sm">
+                                <strong>Risico Acceptatie:</strong> Ik accepteer de geidentificeerde risico's (SAIL <?= $sailLevel ?>) en neem volledige verantwoordelijkheid voor de veilige uitvoering van deze droneoperatie.
+                            </label>
+                        </div>
+
+                        <div class="flex items-start">
+                            <input type="checkbox" id="regulatory_compliance" name="declarations[]" value="regulatory"
+                                class="mr-3 mt-1 text-primary focus:ring-primary" required>
+                            <label for="regulatory_compliance" class="text-sm">
+                                <strong>Regelgeving Naleving:</strong> Ik bevestig dat deze operatie voldoet aan alle van toepassing zijnde Nederlandse en Europese drone regelgeving.
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Navigation -->
+                <div class="flex justify-between items-center p-6 bg-white card-shadow rounded-xl">
+                    <a href="step2.php" class="text-gray-500 hover:text-gray-700 flex items-center text-sm font-medium">
+                        <i class="fas fa-arrow-left mr-2"></i> Vorige stap
+                    </a>
+                    <button type="submit" id="submitBtn" disabled
+                        class="bg-gray-400 text-white px-8 py-3 rounded-lg font-medium transition-colors flex items-center">
+                        Voltooien & Indienen
+                        <i class="fas fa-arrow-right ml-2"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <footer class="py-6 border-t border-borderColor">
+        <div class="container mx-auto px-4 text-center">
+            <p class="text-gray-600 text-sm">© 2025 DroneFlightPlanner. Alle rechten voorbehouden.</p>
+        </div>
+    </footer>
+
+    <script>
+        let uploadedFiles = 0;
+        let totalRequiredFiles = <?= array_sum(array_map('count', $requiredDocs)) ?>;
+        let totalMitigations = <?= array_sum(array_map('count', $requiredMitigations)) ?>;
+        let checkedMitigations = 0;
+
+        function handleFileUpload(input, docKey) {
+            const file = input.files[0];
+            const statusDiv = document.getElementById('file_status_' + docKey);
+            const hiddenInput = input.parentElement.parentElement.querySelector('input[type="hidden"]');
+            const card = input.closest('.requirement-card');
+
+            if (file) {
+                statusDiv.innerHTML = `<i class="fas fa-check-circle text-green-500 mr-1"></i>${file.name}`;
+                statusDiv.classList.add('text-green-600');
+                hiddenInput.disabled = false;
+                card.classList.add('completed');
+                uploadedFiles++;
+            } else {
+                statusDiv.innerHTML = '';
+                statusDiv.classList.remove('text-green-600');
+                hiddenInput.disabled = true;
+                card.classList.remove('completed');
+                uploadedFiles--;
+            }
+
+            updateProgress();
+        }
+
+        function updateProgress() {
+            // Count checked mitigations
+            checkedMitigations = document.querySelectorAll('input[name="mitigations[]"]:checked').length;
+
+            // Count required declarations
+            const checkedDeclarations = document.querySelectorAll('input[name="declarations[]"]:checked').length;
+            const totalDeclarations = document.querySelectorAll('input[name="declarations[]"]').length;
+
+            // Calculate overall progress
+            const fileProgress = (uploadedFiles / totalRequiredFiles) * 40; // 40% weight
+            const mitigationProgress = (checkedMitigations / totalMitigations) * 40; // 40% weight  
+            const declarationProgress = (checkedDeclarations / totalDeclarations) * 20; // 20% weight
+
+            const overallProgress = Math.round(fileProgress + mitigationProgress + declarationProgress);
+
+            // Update progress bar
+            document.getElementById('overallProgress').style.width = overallProgress + '%';
+
+            // Update progress text
+            let statusText = `${overallProgress}% voltooid - `;
+            if (overallProgress < 30) {
+                statusText += 'Upload meer documenten en bevestig mitigatiemaatregelen';
+            } else if (overallProgress < 70) {
+                statusText += 'Goed bezig! Voltooi de resterende eisen';
+            } else if (overallProgress < 100) {
+                statusText += 'Bijna klaar! Controleer de verklaringen';
+            } else {
+                statusText += 'Alle eisen voltooid - klaar om in te dienen';
+            }
+
+            document.getElementById('progressText').textContent = statusText;
+
+            // Enable/disable submit button
+            const submitBtn = document.getElementById('submitBtn');
+            if (overallProgress === 100) {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('bg-gray-400');
+                submitBtn.classList.add('bg-primary', 'hover:bg-blue-700');
+            } else {
+                submitBtn.disabled = true;
+                submitBtn.classList.add('bg-gray-400');
+                submitBtn.classList.remove('bg-primary', 'hover:bg-blue-700');
+            }
+        }
+
+        function toggleOSODetails(type) {
+            // This would expand to show all OSO requirements
+            alert(`Functie om alle ${type} OSO eisen te tonen wordt nog geïmplementeerd.`);
+        }
+
+        // Drag and drop functionality
+        document.querySelectorAll('.upload-zone').forEach(zone => {
+            zone.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                this.classList.add('dragover');
+            });
+
+            zone.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                this.classList.remove('dragover');
+            });
+
+            zone.addEventListener('drop', function(e) {
+                e.preventDefault();
+                this.classList.remove('dragover');
+
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    const input = this.querySelector('input[type="file"]');
+                    input.files = files;
+
+                    // Trigger change event
+                    const event = new Event('change', {
+                        bubbles: true
+                    });
+                    input.dispatchEvent(event);
+                }
+            });
+        });
+
+        // Form validation before submit
+        document.getElementById('complianceForm').addEventListener('submit', function(e) {
+            const progress = parseInt(document.getElementById('overallProgress').style.width);
+
+            if (progress < 100) {
+                e.preventDefault();
+                alert('Voltooi alle vereiste documenten, mitigatiemaatregelen en verklaringen voordat u kunt indienen.');
+                return false;
+            }
+
+            // Show confirmation dialog
+            const confirmed = confirm(
+                `U staat op het punt om uw vluchtplanning in te dienen met de volgende kenmerken:\n\n` +
+                `• SAIL Niveau: ${<?= $sailLevel ?>}\n` +
+                `• Risico Classificatie: <?= $riskLabel ?>\n` +
+                `• Geüploade Documenten: ${uploadedFiles}/${totalRequiredFiles}\n` +
+                `• Bevestigde Mitigaties: ${checkedMitigations}/${totalMitigations}\n\n` +
+                `Weet u zeker dat u wilt doorgaan?`
+            );
+
+            if (!confirmed) {
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        // Initialize progress calculation
+        document.addEventListener('DOMContentLoaded', function() {
+            updateProgress();
+
+            // Add change listeners to all checkboxes
+            document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+                checkbox.addEventListener('change', updateProgress);
+            });
+        });
+
+        // Auto-save progress to session storage
+        setInterval(function() {
+            const formData = new FormData(document.getElementById('complianceForm'));
+            const progress = {
+                uploadedFiles: uploadedFiles,
+                checkedMitigations: checkedMitigations,
+                timestamp: new Date().toISOString()
+            };
+
+            sessionStorage.setItem('step3_progress', JSON.stringify(progress));
+        }, 30000); // Save every 30 seconds
+
+        // Load saved progress
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedProgress = sessionStorage.getItem('step3_progress');
+            if (savedProgress) {
+                const progress = JSON.parse(savedProgress);
+                console.log('Loaded saved progress:', progress);
+            }
+        });
+    </script>
+</body>
+
+</html>

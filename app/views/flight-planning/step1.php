@@ -313,10 +313,9 @@ unset($_SESSION['form_error']);
     <header class="bg-white shadow-sm">
         <div class="container mx-auto px-4 py-4 flex justify-between items-center">
             <div class="flex items-center">
-                <div class="bg-primary p-2 rounded-lg mr-3">
-                    <i class="fas fa-drone text-white text-xl"></i>
-                </div>
-                <h1 class="text-xl font-bold text-secondary">DroneFlightPlanner</h1>
+                <P class="text-l">
+                    <span class="font-bold">HTD</span> DroneFlightPlanner
+                </P>
             </div>
             <div class="flex items-center space-x-4">
                 <div class="flex items-center bg-subtleBg py-1 px-3 rounded-full">
@@ -573,7 +572,7 @@ unset($_SESSION['form_error']);
 
     <footer class="py-6 border-t border-borderColor">
         <div class="container mx-auto px-4 text-center">
-            <p class="text-gray-600 text-sm">© 2023 DroneFlightPlanner. Alle rechten voorbehouden.</p>
+            <p class="text-gray-600 text-sm">© 2025 DroneFlightPlanner. Alle rechten voorbehouden.</p>
         </div>
     </footer>
 
