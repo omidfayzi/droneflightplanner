@@ -1,746 +1,536 @@
 <?php
-// /var/www/public/frontend/pages/assets/drones.php
+// =================================================================
+// DRONE INVENTARIS PAGINA
+// =================================================================
+// Zelfde patroon: dynamische kolommen, filters, zoekbalk, modals.
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+if (session_status() === PHP_SESSION_NONE) session_start();
 
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../functions.php';
 
+// =================================================================
+// API DATA OPHALEN
+// =================================================================
 $apiBaseUrl = defined('API_BASE_URL') ? API_BASE_URL : "http://devserv01.holdingthedrones.com:4539";
-$dronesUrl = "$apiBaseUrl/drones";
+$dronesUrl  = rtrim($apiBaseUrl, '/') . "/drones";
 
 $dronesResponse = @file_get_contents($dronesUrl);
 $drones = $dronesResponse ? json_decode($dronesResponse, true) : [];
-
-if (json_last_error() !== JSON_ERROR_NONE && $dronesResponse) {
-    error_log("JSON Decode Error for drones: " . json_last_error_msg() . " | Response: " . $dronesResponse);
-    $drones = [];
-}
 
 if (isset($drones['data']) && is_array($drones['data'])) {
     $drones = $drones['data'];
 }
 
-$uniqueStatuses = [];
-$fabrikanten = [];
+if ($dronesResponse && json_last_error() !== JSON_ERROR_NONE) {
+    error_log("JSON Decode Error (drones): " . json_last_error_msg());
+    $drones = [];
+}
+
+// =================================================================
+// DYNAMISCHE KOLOMMEN + FILTERS
+// =================================================================
+$kolommen = [];
 if (!empty($drones) && is_array($drones)) {
-    foreach ($drones as $drone) {
-        if (!empty($drone['status']) && !in_array($drone['status'], $uniqueStatuses)) {
-            $uniqueStatuses[] = $drone['status'];
-        }
-        if (!empty($drone['fabrikant']) && !in_array($drone['fabrikant'], $fabrikanten)) {
-            $fabrikanten[] = $drone['fabrikant'];
-        }
-    }
-    sort($uniqueStatuses);
-    sort($fabrikanten);
+    $kolommen = array_keys($drones[0]);
 }
 
-$kolomDefinities = [
-    'droneId' => 'Drone ID',
-    'in_huis_id' => 'In-Huis ID',
-    'droneNaam' => 'Model',
-    'naam' => 'Naam/Omschrijving',
-    'serienummer' => 'Serienummer',
-    'fabrikant' => 'Fabrikant',
-    'verzekering' => 'Verzekering',
-    'verzekering_geldig_tot' => 'Verzekering Geldig Tot',
-    'registratie_autoriteit' => 'Registratie Autoriteit',
-    'certificaat' => 'Certificaat',
-    'laatste_onderhoud' => 'Laatste Onderhoud',
-    'volgende_onderhoud' => 'Volgende Onderhoud',
-    'status' => 'Status',
-    'aankoopdatum' => 'Aankoopdatum',
-    'droneCategorieId' => 'Cat. ID',
-    'easaKlasseId' => 'EASA Klasse ID',
-    'organisatieId' => 'Org. ID',
-];
+$uniqueStatuses = [];
+$uniqueFabrikanten = [];
+foreach ($drones as $dr) {
+    $s = $dr['status'] ?? '';
+    $f = $dr['fabrikant'] ?? ($dr['manufacturer'] ?? '');
+    if ($s !== '' && !in_array($s, $uniqueStatuses, true)) $uniqueStatuses[] = $s;
+    if ($f !== '' && !in_array($f, $uniqueFabrikanten, true)) $uniqueFabrikanten[] = $f;
+}
+sort($uniqueStatuses);
+sort($uniqueFabrikanten);
 
-function formatDate($date)
+// Helpers
+function nlDateDrone($v)
 {
-    if (empty($date) || $date === '0000-00-00' || $date === '0000-00-00 00:00:00') {
-        return 'N/B';
-    }
+    if (!$v || $v === '0000-00-00' || $v === '0000-00-00 00:00:00') return 'N/B';
     try {
-        $dateTime = new DateTime($date);
-        return $dateTime->format('d-m-Y');
+        return (new DateTime($v))->format('d-m-Y');
     } catch (Exception $e) {
-        error_log("Date formatting error for: " . $date . " - " . $e->getMessage());
-        return htmlspecialchars($date);
+        return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8');
     }
 }
-
-function getStatusClass($status)
+function slug($s)
 {
-    $statusLower = strtolower($status);
-    return match ($statusLower) {
-        'actief', 'online' => 'bg-green-100 text-green-800',
-        'in onderhoud', 'onderhoud' => 'bg-yellow-100 text-yellow-800',
-        'afgekeurd', 'inactief', 'offline' => 'bg-red-100 text-red-800',
-        'verkocht' => 'bg-blue-100 text-blue-800',
-        default => 'bg-gray-100 text-gray-800'
-    };
+    return strtolower(preg_replace('/\s+/', '-', (string)$s));
 }
 
+// =================================================================
+// HEAD/TEMPLATE VARS
+// =================================================================
 $showHeader = 1;
-$userName = $_SESSION['user']['first_name'] ?? 'Onbekend';
-$headTitle = "Drone Inventaris";
-$gobackUrl = 0;
+$userName   = $_SESSION['user']['first_name'] ?? 'Onbekend';
+$headTitle  = "Drone Inventaris";
+$gobackUrl  = 0;
 $rightAttributes = 0;
 
-$bodyContent = "
-    <style>
-        .modal-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(17, 24, 39, 0.70);
-            z-index: 50;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            transition: opacity 0.25s ease-in-out;
-            opacity: 0;
-        }
-        .modal-overlay.active {
-            display: flex;
-            opacity: 1;
-        }
-        .modal-content {
-            background: #fff;
-            border-radius: 1rem;
-            max-width: 580px;
-            width: 100%;
-            box-shadow: 0 8px 32px rgba(31, 41, 55, 0.18);
-            padding: 2.5rem 2rem 1.5rem 2rem;
-            position: relative;
-            animation: modalIn 0.18s cubic-bezier(.4, 0, .2, 1);
-            overflow-y: auto;
-            max-height: 90vh;
-        }
-        @keyframes modalIn {
-            from { transform: translateY(60px) scale(0.98); opacity: 0.3; }
-            to   { transform: translateY(0) scale(1); opacity: 1; }
-        }
-        .modal-close-btn {
-            position: absolute;
-            right: 1.3rem;
-            top: 1.3rem;
-            background: transparent;
-            border: none;
-            font-size: 1.8rem;
-            color: #bbb;
-            cursor: pointer;
-            transition: color 0.15s ease-in-out;
-            line-height: 1;
-            z-index: 10;
-        }
-        .modal-close-btn:hover {
-            color: #111827;
-        }
-        .modal-content h3 {
-            margin-top: 0;
-            margin-bottom: 1.7rem;
-            font-size: 1.22rem;
-            font-weight: 700;
-            color: #1e293b;
-            letter-spacing: .01em;
-        }
-        .form-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1rem;
-        }
-        .form-group { margin-bottom: 1rem; }
-        .form-group label {
-            display: block;
-            margin-bottom: 0.4rem;
-            font-size: 0.875rem;
-            font-weight: 500;
-            color: #374151;
-        }
-        .form-group input,
-        .form-group select,
-        .form-group textarea {
-            border: 1px solid #d1d5db;
-            border-radius: 0.5rem;
-            padding: 0.6rem 0.8rem;
-            width: 100%;
-            font-size: 0.875rem;
-            color: #1f2937;
-            box-shadow: 0 1px 0px rgba(0, 0, 0, 0.03) inset;
-        }
-        .form-group input:focus,
-        .form-group select:focus,
-        .form-group textarea:focus {
-            outline: none;
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
-        }
-        .form-group textarea { resize: vertical; }
-        .form-group .required-star { color: #ef4444; margin-left: 4px;}
+// =================================================================
+// HTML OUTPUT
+// =================================================================
+ob_start();
+?>
+<link rel="stylesheet" href="/app/assets/styles/custom_styling.scss">
 
-        .filter-bar {
-            background: #f3f4f6;
-            border: 1px solid #e5e7eb;
-            border-radius: 0.75rem;
-            padding: 1rem 1.5rem;
-            margin-bottom: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            flex-wrap: wrap;
-        }
-        .filter-group {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        .filter-label {
-            font-size: 0.875rem;
-            color: #4b5563;
-            font-weight: 500;
-        }
-        .filter-select, .filter-search {
-            background: white;
-            border: 1px solid #d1d5db;
-            border-radius: 0.5rem;
-            padding: 0.5rem 1rem;
-            font-size: 0.875rem;
-            cursor: pointer;
-            min-width: 180px;
-        }
-        .filter-select:focus, .filter-search:focus {
-            outline: none;
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        }
-        .filter-search {
-            flex-grow: 1;
-            background-image: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' class='h-6 w-6' fill='none' viewBox='0 0 24 24' stroke='%239ca3af'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z' /%3E%3C/svg%3E\");
-            background-repeat: no-repeat;
-            background-position: right 0.75rem center;
-            background-size: 1rem;
-            min-width: 280px;
-        }
-        
-        .drone-detail-modal {
-            max-width: 800px;
-        }
-        .drone-detail-header {
-            display: flex;
-            align-items: center;
-            margin-bottom: 1.5rem;
-        }
-        .drone-icon {
-            font-size: 2rem;
-            color: #3b82f6;
-            margin-right: 1rem;
-        }
-        .drone-detail-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 1.5rem;
-        }
-        .detail-group {
-            margin-bottom: 1.2rem;
-        }
-        .detail-label {
-            font-weight: 600;
-            color: #4b5563;
-            margin-bottom: 0.3rem;
-            font-size: 0.9rem;
-        }
-        .detail-value {
-            font-size: 1rem;
-            color: #1f2937;
-            padding: 0.5rem 0;
-            border-bottom: 1px solid #e5e7eb;
-        }
-        .detail-value.status {
-            display: inline-block;
-            padding: 0.25rem 0.75rem;
-            border-radius: 9999px;
-            font-size: 0.85rem;
-            font-weight: 500;
-        }
-        .drone-actions {
-            display: flex;
-            gap: 1rem;
-            margin-top: 2rem;
-            justify-content: flex-end;
-        }
-        
-        @media (max-width: 768px) {
-            .filter-bar {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            .filter-group {
-                width: 100%;
-            }
-            .filter-select, .filter-search {
-                width: 100%;
-            }
-        }
-    </style>
-
-    <div class='h-full bg-gray-100 shadow-md rounded-tl-xl w-full flex flex-col'>
-        <div class='p-6 bg-white flex justify-between items-center border-b border-gray-200 flex-shrink-0'>
-            <div class='flex space-x-6 text-sm font-medium'>
-                <a href='drones.php' class='text-gray-900 border-b-2 border-black pb-2'>Drones</a>
-                <a href='employees.php' class='text-gray-600 hover:text-gray-900'>Personeel</a>
-                <a href='addons.php' class='text-gray-600 hover:text-gray-900'>Add-ons</a>
-                <a href='verzekeringen.php' class='text-gray-600 hover:text-gray-900'>Verzekeringen</a>
-            </div>
-            <button onclick='openAddDroneModal()' class='bg-gradient-to-r from-blue-500 to-blue-700 text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors text-sm flex items-center'>
-                <i class='fa-solid fa-plus mr-2'></i>Nieuwe Drone
-            </button>
+<div class="main bg-gray-100 shadow-md rounded-tl-xl w-full flex flex-col">
+    <!-- Navigatie -->
+    <div class="p-6 bg-white flex justify-between items-center border-b border-gray-200 flex-shrink-0">
+        <div class="flex space-x-6 text-sm font-medium">
+            <a href="drones.php" class="text-gray-900 border-b-2 border-black pb-2">Drones</a>
+            <a href="employees.php" class="text-gray-600 hover:text-gray-900">Personeel</a>
+            <a href="addons.php" class="text-gray-600 hover:text-gray-900">Add-ons</a>
+            <a href="verzekeringen.php" class="text-gray-600 hover:text-gray-900">Verzekeringen</a>
         </div>
+        <button onclick="openAddModal()" class="btn-primary text-sm flex items-center gap-2">
+            <i class="fa-solid fa-plus"></i> Nieuwe Drone
+        </button>
+    </div>
 
-        <div class='px-6 pt-4'>
-            <div class='filter-bar'>
-                <div class='filter-group'>
-                    <span class='filter-label'>Status:</span>
-                    <select id='statusFilter' class='filter-select'>
-                        <option value=''>Alle statussen</option>";
-foreach ($uniqueStatuses as $status) {
-    $bodyContent .= "<option value='" . htmlspecialchars(strtolower($status)) . "'>" . htmlspecialchars(ucfirst($status)) . "</option>";
-}
-$bodyContent .= "
+    <!-- Filter balk -->
+    <div class="px-6 pt-4">
+        <div class="filter-bar">
+            <div class="filter-group">
+                <span class="filter-label">Status:</span>
+                <select id="statusFilter" class="filter-select" onchange="filterTable()">
+                    <option value="">Alle statussen</option>
+                    <?php foreach ($uniqueStatuses as $s): ?>
+                        <option value="<?= htmlspecialchars(strtolower($s)) ?>"><?= htmlspecialchars($s) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <span class="filter-label">Fabrikant:</span>
+                <select id="fabrikantFilter" class="filter-select" onchange="filterTable()">
+                    <option value="">Alle fabrikanten</option>
+                    <?php foreach ($uniqueFabrikanten as $f): ?>
+                        <option value="<?= htmlspecialchars(strtolower($f)) ?>"><?= htmlspecialchars($f) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div class="filter-group flex-grow">
+                <input id="searchInput" type="text" class="filter-search" placeholder="Zoek drones..." oninput="filterTable()">
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabel -->
+    <div class="p-6 overflow-y-auto flex-grow">
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <div class="overflow-x-auto">
+                <table id="dronesTable" class="w-full">
+                    <thead class="bg-gray-50 text-xs uppercase text-gray-700">
+                        <tr>
+                            <?php foreach ($kolommen as $kolom): ?>
+                                <th class="px-4 py-3 text-left"><?= htmlspecialchars($kolom) ?></th>
+                            <?php endforeach; ?>
+                            <th class="px-4 py-3 text-left">Acties</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 text-sm">
+                        <?php if (!empty($drones)): ?>
+                            <?php foreach ($drones as $drone): ?>
+                                <?php
+                                $drJson = json_encode($drone, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+                                $statusLower = strtolower($drone['status'] ?? '');
+                                $fabLower    = strtolower($drone['fabrikant'] ?? ($drone['manufacturer'] ?? ''));
+                                ?>
+                                <tr class="hover:bg-gray-50 transition drone-row"
+                                    data-status="<?= htmlspecialchars($statusLower) ?>"
+                                    data-fabrikant="<?= htmlspecialchars($fabLower) ?>">
+
+                                    <?php foreach ($kolommen as $kolom): ?>
+                                        <?php
+                                        $val = $drone[$kolom] ?? '';
+                                        $kLower = strtolower($kolom);
+                                        $isDate = (
+                                            $kLower === 'laatste_onderhoud' ||
+                                            $kLower === 'volgende_onderhoud' ||
+                                            $kLower === 'verzekering_geldig_tot' ||
+                                            $kLower === 'aankoopdatum' ||
+                                            strpos($kLower, 'datum') !== false ||
+                                            strpos($kLower, 'date') !== false
+                                        );
+
+                                        if ($kolom === 'status') {
+                                            $val = '<span class="status-badge status-' . htmlspecialchars(slug($drone['status'] ?? 'onbekend')) . '">' .
+                                                htmlspecialchars($drone['status'] ?? 'Onbekend') . '</span>';
+                                        } elseif ($isDate) {
+                                            $val = nlDateDrone($val);
+                                        } else {
+                                            $val = ($val !== '' ? htmlspecialchars((string)$val) : 'N/B');
+                                        }
+                                        ?>
+                                        <td class="px-4 py-3 whitespace-nowrap"><?= $val ?></td>
+                                    <?php endforeach; ?>
+
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        <button class="text-blue-600 hover:text-blue-800 mr-2" title="Details" onclick='showDetails(<?= $drJson ?>)'>
+                                            <i class="fa-solid fa-info-circle"></i>
+                                        </button>
+                                        <button class="text-green-600 hover:text-green-800" title="Bewerken" onclick='showEdit(<?= $drJson ?>)'>
+                                            <i class="fa-solid fa-edit"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <tr>
+                                <td colspan="<?= count($kolommen) + 1 ?>" class="text-center text-gray-500 py-10">
+                                    Geen drones gevonden of data kon niet worden geladen.
+                                </td>
+                            </tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODALS -->
+<!-- ADD -->
+<div id="addModal" class="modal-overlay">
+    <div class="modal-content">
+        <button class="modal-close-btn" onclick="closeAddModal()">×</button>
+        <h3 class="modal-title"><i class="fa-solid fa-drone"></i> Nieuwe Drone</h3>
+
+        <form action="save_drone.php" method="POST" class="space-y-4">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Model (droneNaam) <span class="required-star">*</span></label>
+                    <input type="text" name="droneNaam" required placeholder="bv. DJI Mavic 3">
+                </div>
+                <div class="form-group">
+                    <label>Naam/Omschrijving</label>
+                    <input type="text" name="naam" placeholder="bv. Inspectie Drone West">
+                </div>
+                <div class="form-group">
+                    <label>Serienummer <span class="required-star">*</span></label>
+                    <input type="text" name="serienummer" required>
+                </div>
+                <div class="form-group">
+                    <label>Fabrikant</label>
+                    <input type="text" name="fabrikant" list="fabOptions">
+                    <datalist id="fabOptions">
+                        <?php foreach ($uniqueFabrikanten as $f): ?>
+                            <option value="<?= htmlspecialchars($f) ?>"></option>
+                        <?php endforeach; ?>
+                    </datalist>
+                </div>
+                <div class="form-group">
+                    <label>Verzekering</label>
+                    <input type="text" name="verzekering">
+                </div>
+                <div class="form-group">
+                    <label>Verzekering geldig tot</label>
+                    <input type="date" name="verzekering_geldig_tot">
+                </div>
+                <div class="form-group">
+                    <label>Registratie autoriteit</label>
+                    <input type="text" name="registratie_autoriteit">
+                </div>
+                <div class="form-group">
+                    <label>Certificaat</label>
+                    <input type="text" name="certificaat">
+                </div>
+                <div class="form-group">
+                    <label>Laatste onderhoud</label>
+                    <input type="date" name="laatste_onderhoud">
+                </div>
+                <div class="form-group">
+                    <label>Volgende onderhoud</label>
+                    <input type="date" name="volgende_onderhoud">
+                </div>
+                <div class="form-group">
+                    <label>Status <span class="required-star">*</span></label>
+                    <select name="status" required>
+                        <option value="">Selecteer…</option>
+                        <?php foreach ($uniqueStatuses as $s): ?>
+                            <option value="<?= htmlspecialchars($s) ?>"><?= htmlspecialchars($s) ?></option>
+                        <?php endforeach; ?>
+                        <option value="Actief">Actief</option>
+                        <option value="In onderhoud">In onderhoud</option>
+                        <option value="Inactief">Inactief</option>
+                        <option value="Verkocht">Verkocht</option>
                     </select>
                 </div>
-                
-                <div class='filter-group'>
-                    <span class='filter-label'>Fabrikant:</span>
-                    <select id='manufacturerFilter' class='filter-select'>
-                        <option value=''>Alle fabrikanten</option>";
-foreach ($fabrikanten as $fabrikant) {
-    $bodyContent .= "<option value='" . htmlspecialchars(strtolower($fabrikant)) . "'>" . htmlspecialchars($fabrikant) . "</option>";
-}
-$bodyContent .= "
+                <div class="form-group">
+                    <label>Aankoopdatum</label>
+                    <input type="date" name="aankoopdatum">
+                </div>
+
+                <!-- Optionele referenties/IDs -->
+                <div class="form-group">
+                    <label>Model ID</label>
+                    <input type="text" name="droneModelId">
+                </div>
+                <div class="form-group">
+                    <label>Categorie ID</label>
+                    <input type="text" name="droneCategorieId">
+                </div>
+                <div class="form-group">
+                    <label>EASA Klasse ID</label>
+                    <input type="text" name="easaKlasseId">
+                </div>
+                <div class="form-group">
+                    <label>Organisatie ID</label>
+                    <input type="text" name="organisatieId">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Notities</label>
+                <textarea name="notes" rows="3"></textarea>
+            </div>
+
+            <div class="pt-4 flex justify-end gap-3">
+                <button type="button" class="btn-secondary" onclick="closeAddModal()">Annuleren</button>
+                <button type="submit" class="btn-primary"><i class="fa-solid fa-save mr-2"></i> Drone Opslaan</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- DETAILS -->
+<div id="detailModal" class="modal-overlay">
+    <div class="modal-content">
+        <button class="modal-close-btn" onclick="closeDetailModal()">×</button>
+        <h3 class="modal-title"><i class="fa-solid fa-drone"></i> Drone Details</h3>
+        <div id="detailContent" class="detail-grid"></div>
+    </div>
+</div>
+
+<!-- EDIT -->
+<div id="editModal" class="modal-overlay">
+    <div class="modal-content">
+        <button class="modal-close-btn" onclick="closeEditModal()">×</button>
+        <h3 class="modal-title"><i class="fa-solid fa-pen"></i> Drone Bewerken</h3>
+
+        <form action="update_drone.php" method="POST" class="space-y-4">
+            <input type="hidden" name="droneId" id="edit_id">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Model (droneNaam) <span class="required-star">*</span></label>
+                    <input type="text" name="droneNaam" id="edit_droneNaam" required>
+                </div>
+                <div class="form-group">
+                    <label>Naam/Omschrijving</label>
+                    <input type="text" name="naam" id="edit_naam">
+                </div>
+                <div class="form-group">
+                    <label>Serienummer <span class="required-star">*</span></label>
+                    <input type="text" name="serienummer" id="edit_serienummer" required>
+                </div>
+                <div class="form-group">
+                    <label>Fabrikant</label>
+                    <input type="text" name="fabrikant" id="edit_fabrikant" list="fabOptions">
+                </div>
+                <div class="form-group">
+                    <label>Verzekering</label>
+                    <input type="text" name="verzekering" id="edit_verzekering">
+                </div>
+                <div class="form-group">
+                    <label>Verzekering geldig tot</label>
+                    <input type="date" name="verzekering_geldig_tot" id="edit_verzekering_geldig_tot">
+                </div>
+                <div class="form-group">
+                    <label>Registratie autoriteit</label>
+                    <input type="text" name="registratie_autoriteit" id="edit_registratie_autoriteit">
+                </div>
+                <div class="form-group">
+                    <label>Certificaat</label>
+                    <input type="text" name="certificaat" id="edit_certificaat">
+                </div>
+                <div class="form-group">
+                    <label>Laatste onderhoud</label>
+                    <input type="date" name="laatste_onderhoud" id="edit_laatste_onderhoud">
+                </div>
+                <div class="form-group">
+                    <label>Volgende onderhoud</label>
+                    <input type="date" name="volgende_onderhoud" id="edit_volgende_onderhoud">
+                </div>
+                <div class="form-group">
+                    <label>Status <span class="required-star">*</span></label>
+                    <select name="status" id="edit_status" required>
+                        <option value="">Selecteer…</option>
+                        <?php foreach ($uniqueStatuses as $s): ?>
+                            <option value="<?= htmlspecialchars($s) ?>"><?= htmlspecialchars($s) ?></option>
+                        <?php endforeach; ?>
+                        <option value="Actief">Actief</option>
+                        <option value="In onderhoud">In onderhoud</option>
+                        <option value="Inactief">Inactief</option>
+                        <option value="Verkocht">Verkocht</option>
                     </select>
                 </div>
-                
-                <div class='filter-group flex-grow'>
-                    <input id='searchInput' type='text' placeholder='Zoek drones...' class='filter-search'>
+                <div class="form-group">
+                    <label>Aankoopdatum</label>
+                    <input type="date" name="aankoopdatum" id="edit_aankoopdatum">
                 </div>
             </div>
-        </div>
 
-        <div class='p-6 overflow-y-auto flex-grow'>
-            <div class='bg-white rounded-lg shadow overflow-hidden'>
-                <div class='p-6 border-b border-gray-200 flex justify-between items-center'>
-                    <h2 class='text-xl font-semibold text-gray-800'>Drone Inventaris</h2>
-                </div>
-                <div class='overflow-x-auto'>
-                    <table id='dronesTable' class='w-full'>
-                        <thead class='bg-gray-50 text-xs uppercase text-gray-700'>
-                            <tr>";
-foreach ($kolomDefinities as $key => $header) {
-    $isStatusCol = ($key === 'status');
-    $isManufacturerCol = ($key === 'fabrikant');
-
-    $headerAttributes = '';
-    if ($isStatusCol) $headerAttributes .= ' data-filterable="status"';
-    if ($isManufacturerCol) $headerAttributes .= ' data-filterable="manufacturer"';
-
-    $dataKeyForFilter = match ($key) {
-        'status' => 'status',
-        'fabrikant' => 'fabrikant',
-        default => null
-    };
-
-    $headerAttributes = '';
-    if ($dataKeyForFilter) {
-        $headerAttributes = ' data-filter-key="' . $dataKeyForFilter . '"';
-    }
-
-    $bodyContent .= "<th class='px-4 py-3 text-left'" . $headerAttributes . ">" . htmlspecialchars($header) . "</th>";
-}
-$bodyContent .= "<th class='px-4 py-3 text-left'>Acties</th>";
-$bodyContent .= "</tr>
-                        </thead>
-                        <tbody class='divide-y divide-gray-200 text-sm'>";
-
-if (!empty($drones) && is_array($drones)) {
-    foreach ($drones as $drone) {
-        $bodyContent .= "<tr class='hover:bg-gray-50 transition'";
-
-        if (isset($drone['status'])) {
-            $bodyContent .= " data-status='" . htmlspecialchars(strtolower($drone['status'])) . "'";
-        }
-        if (isset($drone['fabrikant'])) {
-            $bodyContent .= " data-manufacturer='" . htmlspecialchars(strtolower($drone['fabrikant'])) . "'";
-        }
-
-        $bodyContent .= ">";
-        foreach ($kolomDefinities as $dbKey => $headerName) {
-            $cellValue = $drone[$dbKey] ?? '';
-
-            if ($dbKey === 'laatste_onderhoud' || $dbKey === 'volgende_onderhoud' || $dbKey === 'verzekering_geldig_tot' || $dbKey === 'aankoopdatum') {
-                $cellValue = formatDate($cellValue);
-            } elseif ($dbKey === 'status') {
-                $statusClass = getStatusClass($cellValue);
-                $cellValue = "<span class='" . $statusClass . " px-3 py-1 rounded-full text-xs font-semibold'>" . htmlspecialchars(ucfirst($cellValue)) . "</span>";
-            } elseif (is_string($cellValue) && $cellValue === '') {
-                $cellValue = 'N/B';
-            }
-
-            $bodyContent .= "<td class='px-4 py-3 whitespace-nowrap'>" . $cellValue . "</td>";
-        }
-
-        $droneId = htmlspecialchars($drone['droneId'] ?? 'unknown', ENT_QUOTES, 'UTF-8');
-        $bodyContent .= "<td class='px-4 py-3 whitespace-nowrap text-gray-600'>
-                            <button onclick='openDroneDetailModal(" . json_encode($drone) . ")' class='text-blue-600 hover:text-blue-800 transition mr-3' title='Details drone'>
-                                <i class='fa-solid fa-info-circle'></i>
-                            </button>
-                            <button onclick='openEditDroneModal(" . json_encode($drone) . ")' class='text-green-600 hover:text-green-800 transition' title='Bewerk drone'>
-                                <i class='fa-solid fa-edit'></i>
-                            </button>
-                        </td>";
-
-        $bodyContent .= "</tr>";
-    }
-} else {
-    $bodyContent .= "<tr><td colspan='" . (count($kolomDefinities) + 1) . "' class='text-center text-gray-500 py-10'>Geen drones gevonden of data kon niet worden geladen.</td></tr>";
-}
-$bodyContent .= "
-                        </tbody>
-                    </table>
-                </div>
-                <div class='p-4 border-t border-gray-200 flex justify-between items-center text-sm'>
-                    <span>Toont " . (($drones) ? ("1-" . count($drones)) : "0") . " van " . count($drones) . " drones</span>
-                </div>
+            <div class="form-group">
+                <label>Notities</label>
+                <textarea name="notes" id="edit_notes" rows="3"></textarea>
             </div>
-        </div>
+
+            <div class="pt-4 flex justify-end gap-3">
+                <button type="button" class="btn-secondary" onclick="closeEditModal()">Annuleren</button>
+                <button type="submit" class="btn-primary"><i class="fa-solid fa-save mr-2"></i> Wijzigingen Opslaan</button>
+            </div>
+        </form>
     </div>
+</div>
 
-    <div id='addDroneModal' class='modal-overlay' role='dialog' aria-modal='true' aria-labelledby='addDroneModalTitle'>
-        <div class='modal-content'>
-            <button class='modal-close-btn' aria-label='Sluit modal' onclick='closeAddDroneModal()'>×</button>
-            <h3 id='addDroneModalTitle' class='flex items-center gap-2'>
-              <i class=\"fa-solid fa-drone text-white mr-2\"></i> 
-              Nieuwe Drone Toevoegen
-            </h3>
-            <form id='addDroneForm' action='save_drone.php' method='POST' class='space-y-4'>
-                <div class='form-grid'>
-                    <div class='form-group'>
-                        <label for='drone_droneNaam'>Model <span class='required-star'>*</span></label>
-                        <input type='text' id='drone_droneNaam' name='droneNaam' required placeholder='bv. DJI Mavic 3'>
-                    </div>
-                    <div class='form-group'>
-                        <label for='drone_naam'>Naam/Omschrijving</label>
-                        <input type='text' id='drone_naam' name='naam' placeholder='bv. Inspectie Drone West'>
-                    </div>
-                    <div class='form-group'>
-                        <label for='drone_serienummer'>Serienummer <span class='required-star'>*</span></label>
-                        <input type='text' id='drone_serienummer' name='serienummer' required placeholder='bv. SN12345ABC'>
-                    </div>
-                     <div class='form-group'>
-                        <label for='drone_fabrikant'>Fabrikant</label>
-                        <input type='text' id='drone_fabrikant' name='fabrikant' placeholder='bv. DJI'>
-                    </div>
-                    <div class='form-group'>
-                        <label for='drone_verzekering'>Verzekering</label>
-                        <input type='text' id='drone_verzekering' name='verzekering' placeholder='bv. DronePolis'>
-                    </div>
-                     <div class='form-group'>
-                        <label for='drone_verzekering_geldig_tot'>Verzekering Geldig Tot</label>
-                        <input type='date' id='drone_verzekering_geldig_tot' name='verzekering_geldig_tot'>
-                    </div>
-                    <div class='form-group'>
-                        <label for='drone_registratie_autoriteit'>Registratie Autoriteit</label>
-                        <input type='text' id='drone_registratie_autoriteit' name='registratie_autoriteit' placeholder='bv. RDW'>
-                    </div>
-                    <div class='form-group'>
-                        <label for='drone_certificaat'>Certificaat</label>
-                        <input type='text' id='drone_certificaat' name='certificaat' placeholder='bv. NL-CERT-001'>
-                    </div>
-                     <div class='form-group'>
-                        <label for='drone_laatste_onderhoud'>Laatste Onderhoud</label>
-                        <input type='date' id='drone_laatste_onderhoud' name='laatste_onderhoud'>
-                    </div>
-                     <div class='form-group'>
-                        <label for='drone_volgende_onderhoud'>Volgende Onderhoud</label>
-                        <input type='date' id='drone_volgende_onderhoud' name='volgende_onderhoud'>
-                    </div>
-                    <div class='form-group'>
-                        <label for='drone_status'>Status <span class='required-star'>*</span></label>
-                        <select id='drone_status' name='status' required>
-                            <option value=''>Selecteer status...</option>";
-foreach ($uniqueStatuses as $status) {
-    $bodyContent .= "<option value='" . htmlspecialchars(strtolower($status)) . "'>" . htmlspecialchars(ucfirst($status)) . "</option>";
-}
-$bodyContent .= "
-                        </select>
-                    </div>
-                     <div class='form-group'>
-                        <label for='drone_aankoopdatum'>Aankoopdatum</label>
-                        <input type='date' id='drone_aankoopdatum' name='aankoopdatum'>
-                    </div>
-                    
-                    <div class='form-group'>
-                        <label for='drone_model_id'>Model ID</label>
-                        <input type='text' id='drone_model_id' name='droneModelId' placeholder='bv. 1'>
-                    </div>
-                     <div class='form-group'>
-                        <label for='drone_categorie_id'>Categorie ID</label>
-                        <input type='text' id='drone_categorie_id' name='droneCategorieId' placeholder='bv. 1'>
-                    </div>
-                     <div class='form-group'>
-                        <label for='drone_easa_klasse_id'>EASA Klasse ID</label>
-                        <input type='text' id='drone_easa_klasse_id' name='easaKlasseId' placeholder='bv. 1'>
-                    </div>
-                     <div class='form-group'>
-                        <label for='drone_organisatie_id'>Organisatie ID</label>
-                        <input type='text' id='drone_organisatie_id' name='organisatieId' placeholder='bv. 1'>
-                    </div>
-                    
-                    <div class='form-group col-span-full'>
-                         <label for='drone_notes'>Notities</label>
-                         <textarea id='drone_notes' name='notes' rows='3' placeholder='Eventuele aanvullende informatie...'></textarea>
-                    </div>
-                </div>
-                <div class='pt-4 flex justify-end space-x-3'>
-                    <button type='button' onclick='closeAddDroneModal()' class='bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 text-sm'>Annuleren</button>
-                    <button type='submit' class='bg-gradient-to-r from-blue-500 to-blue-700 text-white px-4 py-2 rounded-lg hover:bg-gray-800 text-sm flex items-center'>
-                        <i class='fa-solid fa-save mr-2'></i>Drone Opslaan
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <div id='droneDetailModal' class='modal-overlay' role='dialog' aria-modal='true' aria-labelledby='droneDetailModalTitle'>
-        <div class='modal-content drone-detail-modal'>
-            <button class='modal-close-btn' aria-label='Sluit modal' onclick='closeDroneDetailModal()'>×</button>
-            <div id='droneDetailContent'></div>
-        </div>
-    </div>
-
-    <div id='editDroneModal' class='modal-overlay' role='dialog' aria-modal='true' aria-labelledby='editDroneModalTitle'>
-        <div class='modal-content'>
-            <button class='modal-close-btn' aria-label='Sluit modal' onclick='closeEditDroneModal()'>×</button>
-            <h3 id='editDroneModalTitle' class='flex items-center gap-2'>
-              <i class=\"fa-solid fa-pen text-gray-700 mr-2\"></i> 
-              Drone Bewerken
-            </h3>
-            <form id='editDroneForm' action='update_drone.php' method='POST' class='space-y-4'>
-                <input type='hidden' id='edit_droneId' name='droneId'>
-                <div class='form-grid' id='editDroneFormContent'>
-                </div>
-                <div class='pt-4 flex justify-end space-x-3'>
-                    <button type='button' onclick='closeEditDroneModal()' class='bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 text-sm'>Annuleren</button>
-                    <button type='submit' class='bg-gradient-to-r from-blue-500 to-blue-700 text-white px-4 py-2 rounded-lg hover:bg-gray-800 text-sm flex items-center'>
-                        <i class='fa-solid fa-save mr-2'></i>Wijzigingen Opslaan
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <script>
-        const dronesData = " . json_encode($drones, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ";
-        
-        const addDroneModal = document.getElementById('addDroneModal');
-        const droneDetailModal = document.getElementById('droneDetailModal');
-        const editDroneModal = document.getElementById('editDroneModal');
-        
-        function openAddDroneModal() {
-            if (addDroneModal) addDroneModal.classList.add('active');
-            document.body.style.overflow = 'hidden';
+<script>
+    // ======= Helpers ==================================================
+    function pick(d, keys) {
+        for (var i = 0; i < keys.length; i++) {
+            if (d[keys[i]] !== undefined && d[keys[i]] !== null && d[keys[i]] !== '') return d[keys[i]];
         }
-        
-        function closeAddDroneModal() {
-            if (addDroneModal) {
-                 addDroneModal.classList.remove('active');
-                 document.getElementById('addDroneForm')?.reset();
-                 document.body.style.overflow = '';
+        return '';
+    }
+
+    function toISODate(v) {
+        try {
+            if (!v) return '';
+            var dt = new Date(v);
+            return isNaN(dt) ? '' : dt.toISOString().split('T')[0];
+        } catch (e) {
+            return '';
+        }
+    }
+
+    function toNLDate(v) {
+        try {
+            if (!v || v === '0000-00-00' || v === '0000-00-00 00:00:00') return 'N/B';
+            var dt = new Date(v);
+            return isNaN(dt) ? v : dt.toLocaleDateString('nl-NL');
+        } catch (e) {
+            return v;
+        }
+    }
+
+    // ======= Modals ===================================================
+    function openAddModal() {
+        document.getElementById('addModal').classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeAddModal() {
+        document.getElementById('addModal').classList.remove('active');
+        document.body.style.overflow = '';
+        var f = document.querySelector('#addModal form');
+        if (f) f.reset();
+    }
+
+    function closeDetailModal() {
+        document.getElementById('detailModal').classList.remove('active');
+        document.body.style.overflow = '';
+    }
+
+    function closeEditModal() {
+        document.getElementById('editModal').classList.remove('active');
+        document.body.style.overflow = '';
+    }
+
+    // ======= Details ==================================================
+    function showDetails(d) {
+        var fields = {
+            'Drone ID': pick(d, ['droneId', 'id']),
+            'Model (droneNaam)': pick(d, ['droneNaam', 'model', 'naam_model']),
+            'Naam/Omschrijving': pick(d, ['naam', 'omschrijving', 'description']),
+            'Serienummer': pick(d, ['serienummer', 'serial', 'serial_number']),
+            'Fabrikant': pick(d, ['fabrikant', 'manufacturer']),
+            'Verzekering': pick(d, ['verzekering']),
+            'Verzekering geldig tot': toNLDate(pick(d, ['verzekering_geldig_tot'])),
+            'Registratie autoriteit': pick(d, ['registratie_autoriteit']),
+            'Certificaat': pick(d, ['certificaat']),
+            'Laatste onderhoud': toNLDate(pick(d, ['laatste_onderhoud'])),
+            'Volgende onderhoud': toNLDate(pick(d, ['volgende_onderhoud'])),
+            'Status': pick(d, ['status']),
+            'Aankoopdatum': toNLDate(pick(d, ['aankoopdatum'])),
+            'Categorie ID': pick(d, ['droneCategorieId']),
+            'EASA Klasse ID': pick(d, ['easaKlasseId']),
+            'Organisatie ID': pick(d, ['organisatieId']),
+            'Notities': pick(d, ['notes', 'notities'])
+        };
+        var html = '';
+        Object.keys(fields).forEach(function(label) {
+            var val = fields[label] || 'N/B';
+            if (label === 'Status') {
+                var slug = String(val || 'onbekend').toLowerCase().replace(/\s+/g, '-');
+                val = '<span class="status-badge status-' + slug + '">' + (val || 'Onbekend') + '</span>';
             }
-        }
-
-        function openDroneDetailModal(drone) {
-            const modalContent = document.getElementById('droneDetailContent');
-            if (modalContent) {
-                let content = '<div class=\"drone-detail-header\">';
-                content += '<i class=\"fa-solid fa-drone drone-icon\"></i>';
-                content += '<h3 class=\"text-xl font-semibold\">' + (drone.droneNaam || 'Onbekend model') + '</h3>';
-                content += '</div>';
-                
-                content += '<div class=\"drone-detail-grid\">';
-                content += '<div>';
-                content += '<div class=\"detail-group\"><div class=\"detail-label\">Serienummer</div><div class=\"detail-value\">' + (drone.serienummer || 'N/B') + '</div></div>';
-                content += '<div class=\"detail-group\"><div class=\"detail-label\">Fabrikant</div><div class=\"detail-value\">' + (drone.fabrikant || 'N/B') + '</div></div>';
-                content += '<div class=\"detail-group\"><div class=\"detail-label\">Verzekering</div><div class=\"detail-value\">' + (drone.verzekering || 'N/B') + '</div></div>';
-                content += '<div class=\"detail-group\"><div class=\"detail-label\">Verzekering geldig tot</div><div class=\"detail-value\">' + formatDroneDate(drone.verzekering_geldig_tot) + '</div></div>';
-                content += '<div class=\"detail-group\"><div class=\"detail-label\">Registratie autoriteit</div><div class=\"detail-value\">' + (drone.registratie_autoriteit || 'N/B') + '</div></div>';
-                content += '<div class=\"detail-group\"><div class=\"detail-label\">Certificaat</div><div class=\"detail-value\">' + (drone.certificaat || 'N/B') + '</div></div>';
-                content += '</div>';
-                
-                content += '<div>';
-                content += '<div class=\"detail-group\"><div class=\"detail-label\">Laatste onderhoud</div><div class=\"detail-value\">' + formatDroneDate(drone.laatste_onderhoud) + '</div></div>';
-                content += '<div class=\"detail-group\"><div class=\"detail-label\">Volgende onderhoud</div><div class=\"detail-value\">' + formatDroneDate(drone.volgende_onderhoud) + '</div></div>';
-                
-                let statusClass = getStatusClass(drone.status);
-                content += '<div class=\"detail-group\"><div class=\"detail-label\">Status</div><div class=\"detail-value\"><span class=\"detail-value status ' + statusClass + '\">' + (drone.status || 'Onbekend') + '</span></div></div>';
-                
-                content += '<div class=\"detail-group\"><div class=\"detail-label\">Aankoopdatum</div><div class=\"detail-value\">' + formatDroneDate(drone.aankoopdatum) + '</div></div>';
-                content += '<div class=\"detail-group\"><div class=\"detail-label\">Categorie ID</div><div class=\"detail-value\">' + (drone.droneCategorieId || 'N/B') + '</div></div>';
-                content += '<div class=\"detail-group\"><div class=\"detail-label\">Organisatie ID</div><div class=\"detail-value\">' + (drone.organisatieId || 'N/B') + '</div></div>';
-                content += '</div></div>';
-                
-                content += '<div class=\"detail-group col-span-full\"><div class=\"detail-label\">Notities</div><div class=\"detail-value\">' + (drone.notes || 'Geen notities beschikbaar') + '</div></div>';
-
-                modalContent.innerHTML = content;
-            }
-            
-            if (droneDetailModal) {
-                droneDetailModal.classList.add('active');
-                document.body.style.overflow = 'hidden';
-            }
-        }
-        
-        function closeDroneDetailModal() {
-            if (droneDetailModal) {
-                droneDetailModal.classList.remove('active');
-                document.body.style.overflow = '';
-            }
-        }
-        
-        function openEditDroneModal(drone) {
-            const formContent = document.getElementById('editDroneFormContent');
-            const droneIdField = document.getElementById('edit_droneId');
-            
-            if (droneIdField) droneIdField.value = drone.droneId || '';
-            
-            if (formContent) {
-                let formHtml = '';
-                formHtml += '<div class=\"form-group\"><label for=\"edit_droneNaam\">Model <span class=\"required-star\">*</span></label><input type=\"text\" id=\"edit_droneNaam\" name=\"droneNaam\" value=\"' + (drone.droneNaam || '') + '\" required></div>';
-                formHtml += '<div class=\"form-group\"><label for=\"edit_naam\">Naam/Omschrijving</label><input type=\"text\" id=\"edit_naam\" name=\"naam\" value=\"' + (drone.naam || '') + '\"></div>';
-                formHtml += '<div class=\"form-group\"><label for=\"edit_serienummer\">Serienummer <span class=\"required-star\">*</span></label><input type=\"text\" id=\"edit_serienummer\" name=\"serienummer\" value=\"' + (drone.serienummer || '') + '\" required></div>';
-                formHtml += '<div class=\"form-group\"><label for=\"edit_fabrikant\">Fabrikant</label><input type=\"text\" id=\"edit_fabrikant\" name=\"fabrikant\" value=\"' + (drone.fabrikant || '') + '\"></div>';
-                formHtml += '<div class=\"form-group\"><label for=\"edit_verzekering\">Verzekering</label><input type=\"text\" id=\"edit_verzekering\" name=\"verzekering\" value=\"' + (drone.verzekering || '') + '\"></div>';
-                formHtml += '<div class=\"form-group\"><label for=\"edit_verzekering_geldig_tot\">Verzekering Geldig Tot</label><input type=\"date\" id=\"edit_verzekering_geldig_tot\" name=\"verzekering_geldig_tot\" value=\"' + formatDateForInput(drone.verzekering_geldig_tot) + '\"></div>';
-                formHtml += '<div class=\"form-group\"><label for=\"edit_registratie_autoriteit\">Registratie Autoriteit</label><input type=\"text\" id=\"edit_registratie_autoriteit\" name=\"registratie_autoriteit\" value=\"' + (drone.registratie_autoriteit || '') + '\"></div>';
-                formHtml += '<div class=\"form-group\"><label for=\"edit_certificaat\">Certificaat</label><input type=\"text\" id=\"edit_certificaat\" name=\"certificaat\" value=\"' + (drone.certificaat || '') + '\"></div>';
-                formHtml += '<div class=\"form-group\"><label for=\"edit_laatste_onderhoud\">Laatste Onderhoud</label><input type=\"date\" id=\"edit_laatste_onderhoud\" name=\"laatste_onderhoud\" value=\"' + formatDateForInput(drone.laatste_onderhoud) + '\"></div>';
-                formHtml += '<div class=\"form-group\"><label for=\"edit_volgende_onderhoud\">Volgende Onderhoud</label><input type=\"date\" id=\"edit_volgende_onderhoud\" name=\"volgende_onderhoud\" value=\"' + formatDateForInput(drone.volgende_onderhoud) + '\"></div>';
-                
-                formHtml += '<div class=\"form-group\"><label for=\"edit_status\">Status <span class=\"required-star\">*</span></label><select id=\"edit_status\" name=\"status\" required>';
-                formHtml += '<option value=\"\">Selecteer status...</option>';
-                
-                const statuses = " . json_encode($uniqueStatuses) . ";
-                statuses.forEach(function(status) {
-                    const selected = status === drone.status ? 'selected' : '';
-                    formHtml += '<option value=\"' + status + '\" ' + selected + '>' + status + '</option>';
-                });
-                
-                formHtml += '</select></div>';
-                formHtml += '<div class=\"form-group\"><label for=\"edit_aankoopdatum\">Aankoopdatum</label><input type=\"date\" id=\"edit_aankoopdatum\" name=\"aankoopdatum\" value=\"' + formatDateForInput(drone.aankoopdatum) + '\"></div>';
-                formHtml += '<div class=\"form-group col-span-full\"><label for=\"edit_notes\">Notities</label><textarea id=\"edit_notes\" name=\"notes\" rows=\"3\">' + (drone.notes || '') + '</textarea></div>';
-                
-                formContent.innerHTML = formHtml;
-            }
-            
-            if (editDroneModal) {
-                editDroneModal.classList.add('active');
-                document.body.style.overflow = 'hidden';
-            }
-        }
-        
-        function closeEditDroneModal() {
-            if (editDroneModal) {
-                editDroneModal.classList.remove('active');
-                document.body.style.overflow = '';
-            }
-        }
-        
-        function formatDroneDate(dateString) {
-            if (!dateString || dateString === '0000-00-00' || dateString === '0000-00-00 00:00:00') return 'N/B';
-            try {
-                const date = new Date(dateString);
-                return date.toLocaleDateString('nl-NL');
-            } catch (e) {
-                return dateString;
-            }
-        }
-        
-        function formatDateForInput(dateString) {
-            if (!dateString || dateString === '0000-00-00' || dateString === '0000-00-00 00:00:00') return '';
-            try {
-                const date = new Date(dateString);
-                return date.toISOString().split('T')[0];
-            } catch (e) {
-                return '';
-            }
-        }
-        
-        function getStatusClass(status) {
-            if (!status) return 'bg-gray-100 text-gray-800';
-            const statusLower = status.toLowerCase();
-            if (statusLower.includes('actief') || statusLower.includes('online')) return 'bg-green-100 text-green-800';
-            if (statusLower.includes('onderhoud')) return 'bg-yellow-100 text-yellow-800';
-            if (statusLower.includes('afgekeurd') || statusLower.includes('inactief') || statusLower.includes('offline')) return 'bg-red-100 text-red-800';
-            if (statusLower.includes('verkocht')) return 'bg-blue-100 text-blue-800';
-            return 'bg-gray-100 text-gray-800';
-        }
-
-        function filterDrones() {
-            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-            const statusFilter = document.getElementById('statusFilter').value.toLowerCase();
-            const manufacturerFilter = document.getElementById('manufacturerFilter').value.toLowerCase();
-            
-            const table = document.getElementById('dronesTable');
-            if (!table) return;
-            
-            const tbody = table.querySelector('tbody');
-            if (!tbody) return;
-
-            const rows = tbody.querySelectorAll('tr');
-            
-            rows.forEach(row => {
-                const rowText = row.textContent.toLowerCase();
-                const status = row.dataset.status || '';
-                const manufacturer = row.dataset.manufacturer || '';
-
-                const matchesSearch = rowText.includes(searchTerm);
-                const matchesStatus = statusFilter === '' || status === statusFilter;
-                const matchesManufacturer = manufacturerFilter === '' || manufacturer === manufacturerFilter;
-                
-                row.style.display = (matchesSearch && matchesStatus && matchesManufacturer) ? '' : 'none';
-            });
-        }
-        
-        document.getElementById('searchInput')?.addEventListener('input', filterDrones);
-        document.getElementById('statusFilter')?.addEventListener('change', filterDrones);
-        document.getElementById('manufacturerFilter')?.addEventListener('change', filterDrones);
-
-        document.getElementById('editDroneForm')?.addEventListener('submit', function(e) {
-            e.preventDefault();
-            this.submit();
+            html += '<div class="detail-group"><div class="detail-label">' + label + '</div><div class="detail-value">' + (val || 'N/B') + '</div></div>';
         });
-        
-        if (addDroneModal) {
-            addDroneModal.addEventListener('click', function(event) { 
-                if (event.target === addDroneModal) closeAddDroneModal(); 
-            });
-        }
-        
-        if (droneDetailModal) {
-            droneDetailModal.addEventListener('click', function(event) { 
-                if (event.target === droneDetailModal) closeDroneDetailModal(); 
-            });
-        }
-        
-        if (editDroneModal) {
-            editDroneModal.addEventListener('click', function(event) { 
-                if (event.target === editDroneModal) closeEditDroneModal(); 
-            });
-        }
-    </script>
-";
+        document.getElementById('detailContent').innerHTML = html;
+        document.getElementById('detailModal').classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
 
+    // ======= Edit =====================================================
+    function showEdit(d) {
+        document.getElementById('edit_id').value = pick(d, ['droneId', 'id']);
+        document.getElementById('edit_droneNaam').value = pick(d, ['droneNaam', 'model', 'naam_model']);
+        document.getElementById('edit_naam').value = pick(d, ['naam', 'omschrijving', 'description']);
+        document.getElementById('edit_serienummer').value = pick(d, ['serienummer', 'serial', 'serial_number']);
+        document.getElementById('edit_fabrikant').value = pick(d, ['fabrikant', 'manufacturer']);
+        document.getElementById('edit_verzekering').value = pick(d, ['verzekering']);
+        document.getElementById('edit_verzekering_geldig_tot').value = toISODate(pick(d, ['verzekering_geldig_tot']));
+        document.getElementById('edit_registratie_autoriteit').value = pick(d, ['registratie_autoriteit']);
+        document.getElementById('edit_certificaat').value = pick(d, ['certificaat']);
+        document.getElementById('edit_laatste_onderhoud').value = toISODate(pick(d, ['laatste_onderhoud']));
+        document.getElementById('edit_volgende_onderhoud').value = toISODate(pick(d, ['volgende_onderhoud']));
+        document.getElementById('edit_status').value = pick(d, ['status']) || '';
+        document.getElementById('edit_aankoopdatum').value = toISODate(pick(d, ['aankoopdatum']));
+        document.getElementById('edit_notes').value = pick(d, ['notes', 'notities']);
+
+        document.getElementById('editModal').classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    // ======= Filter ===================================================
+    function filterTable() {
+        var q = (document.getElementById('searchInput').value || '').toLowerCase();
+        var st = (document.getElementById('statusFilter').value || '').toLowerCase();
+        var fb = (document.getElementById('fabrikantFilter').value || '').toLowerCase();
+
+        var rows = document.querySelectorAll('.drone-row');
+        rows.forEach(function(r) {
+            var text = r.textContent.toLowerCase();
+            var rSt = r.dataset.status || '';
+            var rFb = r.dataset.fabrikant || '';
+
+            var okQ = text.indexOf(q) !== -1;
+            var okSt = !st || rSt === st;
+            var okFb = !fb || rFb === fb;
+            r.style.display = (okQ && okSt && okFb) ? '' : 'none';
+        });
+    }
+
+    // Overlay click => modal sluiten
+    document.addEventListener('DOMContentLoaded', function() {
+        ['addModal', 'detailModal', 'editModal'].forEach(function(id) {
+            var m = document.getElementById(id);
+            if (!m) return;
+            m.addEventListener('click', function(e) {
+                if (e.target === m) {
+                    m.classList.remove('active');
+                    document.body.style.overflow = '';
+                }
+            });
+        });
+    });
+</script>
+
+<?php
+$bodyContent = ob_get_clean();
 require_once __DIR__ . '/../../components/header.php';
 require_once __DIR__ . '/../layouts/template.php';

@@ -8,7 +8,7 @@ $title   = isset($headTitle) && $headTitle !== null ? $headTitle : 'Dashboard';
     - sm:ml-64 zorgt dat de header vanaf sm naast de sidebar staat
     - pl-6 voor extra witruimte tussen sidebar en header-content
 -->
-<header class="sm:ml-72 bg-white rounded-t-2xl shadow-md h-[8vh] min-h-[72px] flex items-center justify-between px-4 sm:px-8 py-3 select-none transition-all duration-200"
+<header class="sm:ml-72 bg-white rounded-t-2xl shadow-md h-[12vh] min-h-[72px] flex items-center justify-between px-4 sm:px-8 py-3 select-none transition-all duration-200"
     style="font-family: 'Montserrat', sans-serif;">
     <!-- Optioneel: extra witruimte (alleen desktop) -->
     <div class="pl-0 sm:pl-2 w-full flex flex-col justify-center">

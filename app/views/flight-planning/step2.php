@@ -1,34 +1,37 @@
 <?php
-// /var/www/public/frontend/pages/flight-planning/step2.php
-// Vluchtplanning Stap 2 - SORA Vragenlijst & Calculatie met verbeterde styling
+// ==================== Sessie en Basisinstellingen ====================
 
+// Start PHP sessie om data van stap 1 te bewaren (zoals analyse-ID, SORA versie, enz.)
 session_start();
 require_once __DIR__ . '/../../../config/config.php';
 
-// Zorg dat SORA_API_URL gedefinieerd is
+// Zorg dat het basisadres van de SORA API goed staat
 if (!defined('SORA_API_URL')) {
     define('SORA_API_URL', 'https://api.dronesora.holdingthedrones.com/');
 }
 $soraApiBaseUrl = SORA_API_URL;
 
-// Haal sessievariabelen op
+// Haal benodigde info uit sessie (gezet door stap 1)
 $soraAnalysisId = $_SESSION['sora_analysis_id'] ?? null;
 $soraVersion = $_SESSION['sora_version'] ?? null;
 $userId = $_SESSION['user']['id'] ?? null;
 $flightData = $_SESSION['flight_data'] ?? [];
 $initialSoraParams = $_SESSION['initial_sora_params'] ?? [];
-
-// Definieer userName voor template
 $userName = $_SESSION['user']['first_name'] ?? 'Onbekende Gebruiker';
 
-// Check essentiële variabelen
+// Controle: als verplichte sessievariabelen missen, stuur terug naar stap 1
 if (!$soraAnalysisId || !$soraVersion || !$userId) {
     $_SESSION['form_error'] = "Sessiegegevens ontbreken. Start een nieuwe vlucht.";
     header("Location: step1.php");
     exit;
 }
 
-// API helper functie
+// ==================== API Helper Functie ====================
+
+/**
+ * Stuurt een request naar een externe API (zoals SORA).
+ * Kan GET, POST, of PUT sturen afhankelijk van $method.
+ */
 function callExternalApi(string $url, array $payload = [], string $method = 'GET'): array
 {
     $ch = curl_init($url);
@@ -40,6 +43,7 @@ function callExternalApi(string $url, array $payload = [], string $method = 'GET
         CURLOPT_STDERR => fopen('php://stderr', 'w')
     ];
 
+    // Voeg JSON body toe voor POST of PUT
     if ($method === 'POST' || $method === 'PUT') {
         $options[CURLOPT_HTTPHEADER][] = 'Content-Type: application/json';
         $options[CURLOPT_POSTFIELDS] = json_encode($payload);
@@ -57,32 +61,39 @@ function callExternalApi(string $url, array $payload = [], string $method = 'GET
 
     error_log("API_CALL: $url ($method) - HTTP: $httpCode - Response: " . ($response ?: '(empty)'));
 
+    // Controleer op netwerkfout
     if ($response === false) {
         return ['error' => "Connection failed: " . curl_error($ch)];
     }
+    // Controleer op HTTP/API fout
     if ($httpCode >= 400) {
         $decoded = json_decode($response, true);
         $errorMsg = $decoded['error'] ?? $decoded['message'] ?? $response ?: "Unknown API error";
         return ['error' => "API Error ($httpCode): $errorMsg"];
     }
 
+    // Zet JSON om naar array en geef terug
     $decoded = json_decode($response, true);
     return is_array($decoded) ? $decoded : ['success' => true];
 }
 
-// Helper functie voor SORA parameter mapping
+// ==================== SORA Payload Builder ====================
+
+/**
+ * Zet formulierantwoorden om naar het juiste formaat voor de SORA API.
+ * Combineert antwoorden met basisinfo uit stap 1.
+ */
 function buildSoraCalculationPayload($formAnswers, $initialParams, $soraVersion)
 {
-    $payload = $initialParams; // Start met basis parameters uit step1
+    $payload = $initialParams; // Begin met de basis uit stap 1
 
-    // Update parameters op basis van form answers
+    // Voeg per antwoord de juiste waarde toe aan payload
     foreach ($formAnswers as $answer) {
         $questionId = $answer['question_id'];
         $content = $answer['content'];
 
-        // Map specific question IDs naar SORA parameters
+        // Match vraag-id naar API-parameter
         switch ($questionId) {
-            // Mitigatie levels
             case 29:
             case 89:
                 $payload[$soraVersion === '2.0' ? 'm1level' : 'm1alevel'] = $content;
@@ -98,7 +109,7 @@ function buildSoraCalculationPayload($formAnswers, $initialParams, $soraVersion)
                 if ($soraVersion === '2.5') $payload['m1blevel'] = $content;
                 break;
 
-            // ARC vragen (8 vragen voor luchtruim classificatie)
+            // Acht luchtruimvragen
             case 36:
             case 98:
                 $payload['q1'] = $content;
@@ -134,24 +145,26 @@ function buildSoraCalculationPayload($formAnswers, $initialParams, $soraVersion)
         }
     }
 
-    return $payload;
+    return $payload; // Alles staat klaar om te versturen naar SORA API
 }
 
-// AJAX POST handler voor opslaan en berekenen
+// ==================== AJAX POST Handler ====================
+
+// Deze code draait alleen als het een AJAX (XHR) POST is (JS-formulier)
+// Doel: antwoorden ontvangen, berekening uitvoeren, resultaat als JSON terugsturen
 if (
     $_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_SERVER['HTTP_X_REQUESTED_WITH']) &&
     strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest'
 ) {
-
     $inputJSON = file_get_contents('php://input');
     $requestData = json_decode($inputJSON, true);
     $answersFromFrontend = $requestData['answers'] ?? [];
 
     try {
-        // Bouw SORA calculation payload
+        // Bouw de payload met antwoorden + basisparams
         $soraPayload = buildSoraCalculationPayload($answersFromFrontend, $initialSoraParams, $soraVersion);
 
-        // Voer SORA berekening uit via vluchtvoorbereiding endpoint
+        // Roep SORA API aan met deze payload
         $vluchtEndpoint = ($soraVersion === '2.0') ? 'vluchtvoorbereiding/2_0' : 'vluchtvoorbereiding/2_5';
         $calculationResult = callExternalApi($soraApiBaseUrl . $vluchtEndpoint, $soraPayload, 'POST');
 
@@ -159,11 +172,11 @@ if (
             throw new Exception($calculationResult['error']);
         }
 
-        // Sla resultaat op in sessie voor gebruik in volgende stappen
+        // Sla resultaat in sessie voor de volgende stap
         $_SESSION['sora_calculation_result'] = $calculationResult;
         $_SESSION['sora_answers'] = $answersFromFrontend;
 
-        // Return success response
+        // Geef resultaat terug aan frontend als JSON
         http_response_code(200);
         header('Content-Type: application/json');
         echo json_encode([
@@ -173,6 +186,7 @@ if (
         ]);
         exit;
     } catch (Exception $e) {
+        // Als er iets misgaat, stuur foutmelding terug
         http_response_code(500);
         header('Content-Type: application/json');
         echo json_encode([
@@ -184,13 +198,11 @@ if (
     }
 }
 
-// GET request - Laad pagina met vragen
-$questions = [];
-$currentAnswers = [];
+// ==================== Vragenlijst Opbouw ====================
 
-// Voor deze demo gebruiken we een vereenvoudigde vragenset
+// Hier bouwen we een demo-vragenlijst (in praktijk haal je deze op uit de API)
 $demoQuestions = [
-    // Mitigatie vragen
+    // Mitigatie (M1/M2/M3 of M1A/M1B/M2)
     [
         'id' => ($soraVersion === '2.0' ? 29 : 89),
         'content' => 'M1 Strategic mitigatie level',
@@ -215,8 +227,7 @@ $demoQuestions = [
         'section' => 'Mitigatie Maatregelen',
         'info' => $soraVersion === '2.0' ? 'Technische risico mitigatie' : 'Tactische mitigatie maatregelen'
     ],
-
-    // ARC vragen (Airspace Risk Class)
+    // Acht luchtruim risico vragen (ARC)
     [
         'id' => ($soraVersion === '2.0' ? 36 : 98),
         'content' => 'Operations in atypical airspace?',
@@ -275,7 +286,7 @@ $demoQuestions = [
     ]
 ];
 
-// Group questions by section
+// Groepeer vragen per sectie zodat de UI logisch is
 $questionsBySection = [];
 foreach ($demoQuestions as $question) {
     $section = $question['section'];
@@ -286,6 +297,7 @@ foreach ($demoQuestions as $question) {
 }
 ?>
 
+<!-- ==================== HTML Template (Met Praktische Styling & Uitleg) ==================== -->
 <!DOCTYPE html>
 <html lang="nl">
 
@@ -447,7 +459,7 @@ foreach ($demoQuestions as $question) {
 </head>
 
 <body class="min-h-screen flex flex-col bg-lightBg">
-    <!-- Header -->
+    <!-- ===== HEADER ===== -->
     <header class="bg-white shadow-sm">
         <div class="container mx-auto px-4 py-4 flex justify-between items-center">
             <div class="flex items-center">
@@ -464,43 +476,38 @@ foreach ($demoQuestions as $question) {
         </div>
     </header>
 
+    <!-- ===== MAIN CONTENT ===== -->
     <main class="flex-grow container mx-auto px-4 py-8">
         <div class="max-w-6xl mx-auto">
             <div class="mb-10 text-center">
                 <h1 class="text-3xl font-bold text-secondary mb-2">SORA Risicoanalyse</h1>
                 <p class="text-gray-600">Stap 2: Beantwoord de vragen voor een nauwkeurige risicoberekening</p>
             </div>
-
             <!-- Progress Bar -->
             <div class="mb-10">
                 <div class="flex justify-between relative">
                     <div class="absolute h-1 bg-gray-200 top-1/2 left-0 right-0 -translate-y-1/2 -z-10"></div>
-
                     <div class="progress-step completed flex flex-col items-center">
                         <div class="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center text-white font-bold mb-2">
                             <i class="fas fa-check"></i>
                         </div>
                         <span class="text-sm font-medium">Basisgegevens</span>
                     </div>
-
                     <div class="progress-step active flex flex-col items-center">
                         <div class="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-white font-bold mb-2">2</div>
                         <span class="text-sm font-medium">SORA Analyse</span>
                     </div>
-
                     <div class="progress-step flex flex-col items-center">
                         <div class="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold mb-2">3</div>
                         <span class="text-sm font-medium">Mitigaties</span>
                     </div>
-
                     <div class="progress-step flex flex-col items-center">
                         <div class="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold mb-2">4</div>
                         <span class="text-sm font-medium">Beoordeling</span>
                     </div>
                 </div>
             </div>
-
-            <!-- Current parameters display -->
+            <!-- Toon huidige parameters uit stap 1 -->
             <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
                 <h4 class="font-semibold text-blue-800 mb-4 flex items-center">
                     <i class="fas fa-info-circle mr-2"></i>
@@ -537,12 +544,11 @@ foreach ($demoQuestions as $question) {
                 </div>
             </div>
 
-            <!-- Form -->
+            <!-- Vragenformulier -->
             <form id="soraForm" class="space-y-8">
                 <input type="hidden" id="soraAnalysisId" value="<?= htmlspecialchars($soraAnalysisId) ?>">
                 <input type="hidden" id="soraVersion" value="<?= htmlspecialchars($soraVersion) ?>">
                 <input type="hidden" id="userId" value="<?= htmlspecialchars($userId) ?>">
-
                 <?php foreach ($questionsBySection as $sectionName => $questions): ?>
                     <div class="bg-white card-shadow rounded-xl overflow-hidden">
                         <div class="p-6 border-b border-borderColor bg-subtleBg">
@@ -554,7 +560,6 @@ foreach ($demoQuestions as $question) {
                                 <?= $sectionName === 'Mitigatie Maatregelen' ? 'Configureer uw veiligheidsmaatregelen' : 'Beantwoord vragen over het luchtruim' ?>
                             </p>
                         </div>
-
                         <div class="p-6 space-y-6">
                             <?php foreach ($questions as $question): ?>
                                 <div class="question-card rounded-lg p-5 bg-cardBg">
@@ -567,13 +572,11 @@ foreach ($demoQuestions as $question) {
                                             <span class="tooltip"><?= htmlspecialchars($question['info']) ?></span>
                                         </div>
                                     </div>
-
                                     <?php if ($question['type'] === 'y/n'): ?>
                                         <div class="flex space-x-4">
                                             <div class="flex items-center">
                                                 <input type="radio" name="q_<?= $question['id'] ?>" id="q_<?= $question['id'] ?>_yes"
-                                                    value="yes" class="mr-2 text-primary focus:ring-primary"
-                                                    <?= $sectionName === 'Luchtruim Risico' ? '' : '' ?>>
+                                                    value="yes" class="mr-2 text-primary focus:ring-primary">
                                                 <label for="q_<?= $question['id'] ?>_yes" class="text-sm font-medium">Ja</label>
                                             </div>
                                             <div class="flex items-center">
@@ -582,7 +585,6 @@ foreach ($demoQuestions as $question) {
                                                 <label for="q_<?= $question['id'] ?>_no" class="text-sm font-medium">Nee</label>
                                             </div>
                                         </div>
-
                                     <?php elseif ($question['type'] === 'mc' && isset($question['options'])): ?>
                                         <div class="grid grid-cols-3 gap-3">
                                             <?php foreach ($question['options'] as $option): ?>
@@ -603,7 +605,6 @@ foreach ($demoQuestions as $question) {
                         </div>
                     </div>
                 <?php endforeach; ?>
-
                 <div class="text-center">
                     <button type="submit" class="bg-primary hover:bg-blue-700 text-white px-8 py-4 rounded-lg font-medium transition-colors flex items-center mx-auto">
                         <i class="fas fa-calculator mr-2"></i>
@@ -611,8 +612,7 @@ foreach ($demoQuestions as $question) {
                     </button>
                 </div>
             </form>
-
-            <!-- Result area -->
+            <!-- Resultaat -->
             <div id="resultArea" class="mt-8" style="display: none;">
                 <div class="result-card p-8 text-center">
                     <div id="loadingState">
@@ -620,12 +620,10 @@ foreach ($demoQuestions as $question) {
                         <h3 class="text-xl font-semibold mb-2">SORA Berekening wordt uitgevoerd...</h3>
                         <p class="opacity-90">Even geduld, we analyseren uw risicoparameters</p>
                     </div>
-
                     <div id="resultContent" style="display: none;"></div>
                 </div>
             </div>
-
-            <!-- Navigation -->
+            <!-- Navigatie -->
             <div class="flex justify-between items-center mt-8 p-6 bg-white card-shadow rounded-xl">
                 <a href="step1.php" class="text-gray-500 hover:text-gray-700 flex items-center text-sm font-medium">
                     <i class="fas fa-arrow-left mr-2"></i> Vorige stap
@@ -639,24 +637,25 @@ foreach ($demoQuestions as $question) {
             </div>
         </div>
     </main>
-
     <footer class="py-6 border-t border-borderColor">
         <div class="container mx-auto px-4 text-center">
             <p class="text-gray-600 text-sm">© 2025 DroneFlightPlanner. Alle rechten voorbehouden.</p>
         </div>
     </footer>
-
+    <!-- ============= JS: Formulier en AJAX afhandeling ============= -->
     <script>
+        // Pak formulier en resultaatblokken
         const form = document.getElementById("soraForm");
         const resultArea = document.getElementById("resultArea");
         const loadingState = document.getElementById("loadingState");
         const resultContent = document.getElementById("resultContent");
         const nextStepBtn = document.getElementById("nextStepBtn");
 
+        // Bij verzenden van formulier (klik op 'SORA Risicoberekening uitvoeren')
         form.addEventListener("submit", async function(e) {
             e.preventDefault();
 
-            // Show loading state
+            // Laat "laden" animatie zien
             resultArea.style.display = "block";
             loadingState.style.display = "block";
             resultContent.style.display = "none";
@@ -664,7 +663,7 @@ foreach ($demoQuestions as $question) {
                 behavior: 'smooth'
             });
 
-            // Collect form data
+            // Verzamel antwoorden
             const formData = new FormData(form);
             const answersToSave = [];
 
@@ -678,6 +677,7 @@ foreach ($demoQuestions as $question) {
                 }
             }
 
+            // Stuur antwoorden naar backend via AJAX (JSON)
             try {
                 const response = await fetch(window.location.href, {
                     method: "POST",
@@ -692,7 +692,7 @@ foreach ($demoQuestions as $question) {
 
                 const data = await response.json();
 
-                // Hide loading, show results
+                // Na kort wachten, resultaat tonen
                 setTimeout(() => {
                     loadingState.style.display = "none";
                     resultContent.style.display = "block";
@@ -703,7 +703,7 @@ foreach ($demoQuestions as $question) {
                     } else {
                         displayErrorResult(data.message, data.details);
                     }
-                }, 1500); // Simulate processing time
+                }, 1500); // Simuleer verwerkingstijd
 
             } catch (err) {
                 setTimeout(() => {
@@ -714,6 +714,7 @@ foreach ($demoQuestions as $question) {
             }
         });
 
+        // Toon succesresultaat
         function displaySuccessResult(calc) {
             const sailLevel = calc.sail2_0 || calc.SAIL || 'N/A';
             const grc = calc.grc2_0 || calc.GRC || 'N/A';
@@ -748,7 +749,6 @@ foreach ($demoQuestions as $question) {
                         <h3 class="text-2xl font-bold mb-2">SORA Berekening Voltooid</h3>
                         <p class="text-lg opacity-90">${riskLevel}</p>
                     </div>
-
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                         <div class="bg-white bg-opacity-20 rounded-lg p-4">
                             <h4 class="font-semibold mb-3 text-lg">Hoofdresultaten</h4>
@@ -771,7 +771,6 @@ foreach ($demoQuestions as $question) {
                                 </div>
                             </div>
                         </div>
-
                         <div class="bg-white bg-opacity-20 rounded-lg p-4">
                             <h4 class="font-semibold mb-3 text-lg">Veiligheidsniveau</h4>
                             <div class="text-center">
@@ -784,19 +783,17 @@ foreach ($demoQuestions as $question) {
                             </div>
                         </div>
                     </div>
-
                     <div class="bg-white bg-opacity-20 rounded-lg p-4 mb-6">
                         <h4 class="font-semibold mb-3">Interpretatie</h4>
                         <p class="text-sm opacity-90 leading-relaxed">
-                            ${sailLevel <= 2 ? 
-                                '✅ Uw operatie valt in de lage risicocategorie. Standaard veiligheidsprocedures zijn voldoende.' : 
-                                sailLevel <= 4 ? 
-                                '⚠️ Uw operatie vereist gemiddelde risicomitigatie. Extra documentatie en training kunnen nodig zijn.' : 
+                            ${sailLevel <= 2 ?
+                                '✅ Uw operatie valt in de lage risicocategorie. Standaard veiligheidsprocedures zijn voldoende.' :
+                                sailLevel <= 4 ?
+                                '⚠️ Uw operatie vereist gemiddelde risicomitigatie. Extra documentatie en training kunnen nodig zijn.' :
                                 '❌ Uw operatie valt in de hoge risicocategorie. Uitgebreide certificering en speciale procedures zijn vereist.'
                             }
                         </p>
                     </div>
-
                     <details class="bg-white bg-opacity-10 rounded-lg">
                         <summary class="p-4 cursor-pointer font-medium">
                             <i class="fas fa-code mr-2"></i>Toon technische details
@@ -808,7 +805,7 @@ foreach ($demoQuestions as $question) {
                 </div>
             `;
         }
-
+        // Toon foutmelding
         function displayErrorResult(message, details) {
             resultContent.innerHTML = `
                 <div class="text-white text-center">
@@ -825,15 +822,13 @@ foreach ($demoQuestions as $question) {
                 </div>
             `;
         }
-
-        // Tooltip functionality
+        // Tooltip functionaliteit
         document.querySelectorAll('.info-icon').forEach(icon => {
             icon.addEventListener('mouseenter', function() {
                 const tooltip = this.querySelector('.tooltip');
                 tooltip.style.visibility = 'visible';
                 tooltip.style.opacity = '1';
             });
-
             icon.addEventListener('mouseleave', function() {
                 const tooltip = this.querySelector('.tooltip');
                 tooltip.style.visibility = 'hidden';

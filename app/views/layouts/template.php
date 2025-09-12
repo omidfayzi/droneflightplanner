@@ -293,11 +293,6 @@ if (is_dir($componentsDir)) {
                             </div>
                         </div>
                     </div>
-
-                    <div class="border-t border-gray-700 mt-6 pt-4 text-center text-gray-500 text-sm">
-                        <p>&copy; <?php echo date('Y'); ?> <?php echo $orgNaam ? htmlspecialchars($orgNaam) : "Drone Flight Planner"; ?>. Alle rechten voorbehouden.</p>
-                        <p class="mt-1">v1.2.0 | Systeemstatus: <span class="text-green-400">Operationeel</span></p>
-                    </div>
                 </div>
             </footer>
         </div>
