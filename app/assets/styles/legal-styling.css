@@ -1,0 +1,163 @@
+/*
+ * =================================================================
+ * Styling voor de Juridische Pagina (legal.php)
+ * =================================================================
+ */
+
+body {
+    background-color: #f5f7fa;
+    font-family: 'Montserrat', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    padding: 20px;
+    background-image: url('/app/assets/images/droneBackgroundImage.jpg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    backdrop-filter: blur(5px) brightness(0.7);
+}
+
+.container-wrapper {
+    background-color: rgba(255, 255, 255, 0.98);
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    padding: 40px;
+    width: 100%;
+    max-width: 800px;
+}
+
+h1,
+h2 {
+    color: #2c3e50;
+    font-weight: 700;
+}
+
+h1 {
+    font-size: 2.2rem;
+    margin-bottom: 1rem;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 0.5rem;
+}
+
+h2 {
+    font-size: 1.5rem;
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+    color: #3b82f6;
+}
+
+p,
+li {
+    color: #4a5568;
+    line-height: 1.6;
+    font-size: 1rem;
+}
+
+a {
+    color: #3b82f6;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+
+a:hover {
+    color: #2563eb;
+    text-decoration: underline;
+}
+
+.nav-tabs {
+    margin-bottom: 30px;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.nav-link {
+    font-weight: 600;
+    color: #4a5568;
+    border: none;
+    border-radius: 8px 8px 0 0;
+}
+
+.nav-link.active,
+.nav-link:hover {
+    color: #3b82f6;
+    background-color: rgba(59, 130, 246, 0.1);
+}
+
+.content-section {
+    background: #f8fafc;
+    border-radius: 10px;
+    padding: 25px;
+    border-left: 4px solid #3b82f6;
+}
+
+ol {
+    counter-reset: item;
+    padding-left: 0;
+}
+
+ol li {
+    display: block;
+    margin-bottom: 1rem;
+    padding-left: 2.5rem;
+    position: relative;
+}
+
+ol li:before {
+    content: counter(item) ".";
+    counter-increment: item;
+    position: absolute;
+    left: 0;
+    top: 0;
+    background: #3b82f6;
+    color: white;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    text-align: center;
+    line-height: 26px;
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+.btn-action {
+    padding: 10px 20px;
+    font-size: 0.95rem;
+    border-radius: 8px;
+    transition: all 0.2s;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-primary {
+    background-color: #3b82f6;
+    color: white;
+    border: 1px solid #3b82f6;
+}
+
+.btn-primary:hover {
+    background-color: #2563eb;
+    transform: translateY(-2px);
+}
+
+footer {
+    margin-top: 40px;
+    padding-top: 20px;
+    color: #718096;
+    font-size: 0.9rem;
+    border-top: 1px solid #e2e8f0;
+    text-align: center;
+}
+
+.highlight {
+    background: #e6f2ff;
+    border-radius: 8px;
+    padding: 15px;
+    margin: 15px 0;
+    border-left: 3px solid #3b82f6;
+}

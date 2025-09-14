@@ -1,27 +1,44 @@
 <?php
 // /var/www/public/frontend/pages/organisatie.php
 
+// --- STAP 1: INITIALISATIE ---
+
+// Start de PHP-sessie om toegang te krijgen tot ingelogde gebruikersgegevens.
 session_start();
+// Laad de centrale configuratie en algemene functies.
 require_once __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../functions.php';
 
-// Valideer gebruiker
+// --- STAP 2: BEVEILIGING ---
+
+// Valideer of de gebruiker is ingelogd. Zo niet, stuur weg.
 if (!isset($_SESSION['user']['id'])) {
     $_SESSION['form_error'] = "U moet ingelogd zijn om organisatiegegevens te bekijken.";
     header("Location: landing-page.php");
     exit;
 }
 
+// Sla het ID van de ingelogde gebruiker op.
 $loggedInUserId = $_SESSION['user']['id'];
 
-// Altijd de laatst geselecteerde organisatie tonen, tenzij een andere via ?id=... is meegegeven
+// --- STAP 3: BEPAAL WELKE ORGANISATIE GETOOND MOET WORDEN ---
+
+// Kijk eerst of er een 'id' in de URL staat (bv. /organisatie.php?id=123).
+// Zo niet, gebruik dan de organisatie die de gebruiker bij het inloggen heeft gekozen.
 $organisationIdToView = $_GET['id'] ?? ($_SESSION['selected_organisation_id'] ?? null);
 
+// --- STAP 4: API-CONFIGURATIE & COMMUNICATIE ---
+
+// Definieer de basis-URL voor de API.
 if (!defined('MAIN_API_URL')) {
     define('MAIN_API_URL', 'http://devserv01.holdingthedrones.com:4539');
 }
 $mainApiBaseUrl = MAIN_API_URL;
 
+/**
+ * Functie om een API-call te maken met cURL.
+ * Deze functie is specifiek voor deze pagina.
+ */
 function callMainApi(string $url, string $method = 'GET', array $payload = []): array
 {
     $ch = curl_init($url);
@@ -58,7 +75,9 @@ function callMainApi(string $url, string $method = 'GET', array $payload = []): 
     return is_array($json) ? $json : ['error' => "Ongeldige JSON response"];
 }
 
-// Fallback/defaults
+// --- STAP 5: DATA OPHALEN VAN DE API ---
+
+// Maak standaard (lege) variabelen aan om fouten te voorkomen.
 $organization = [];
 $stats = [
     'personeel' => ['totaal' => 0, 'actief' => 0],
@@ -68,38 +87,49 @@ $stats = [
 ];
 $pageErrorMessage = null;
 
-// Organisatie detail ophalen via API als mogelijk
+// Variabele om bij te houden of het ophalen van de organisatie gelukt is.
 $apiOrgDetailsSuccess = false;
+
+// Haal alleen data op als we een ID hebben om op te zoeken.
 if ($organisationIdToView !== null) {
+    // Roep de API aan om de details van de specifieke organisatie op te halen.
     $orgDetailsResponse = callMainApi($mainApiBaseUrl . '/organisaties/' . $organisationIdToView);
+
+    // Controleer of de API-call succesvol was.
     if (!isset($orgDetailsResponse['error']) && !empty($orgDetailsResponse)) {
         $organization = $orgDetailsResponse;
         $apiOrgDetailsSuccess = true;
     } else {
+        // Als er een fout was, maak een foutmelding voor de gebruiker.
         $errorMsg = $orgDetailsResponse['error'] ?? 'Onbekende fout';
         $pageErrorMessage = "Fout bij laden organisatie details: " . htmlspecialchars($errorMsg);
     }
 } else {
+    // Als er geen organisatie-ID is, toon een duidelijke melding.
     $pageErrorMessage = "Geen organisatie geselecteerd. Gebruik het selectiescherm.";
 }
 
-// Statistieken ophalen als organisatie is gevonden
+// Als het ophalen van de organisatie gelukt is, haal dan ook de statistieken op.
 if ($apiOrgDetailsSuccess) {
+    // Haal het aantal personeelsleden op.
     $personnelResponse = callMainApi($mainApiBaseUrl . '/gebruikers?organisatieId=' . $organisationIdToView);
     if (!isset($personnelResponse['error'])) {
         $stats['personeel']['totaal'] = count($personnelResponse);
         $stats['personeel']['actief'] = count(array_filter($personnelResponse, fn($p) => ($p['isActive'] ?? 0) == 1));
     }
 
+    // Haal het aantal drones op.
     $dronesResponse = callMainApi($mainApiBaseUrl . '/drones?organisatieId=' . $organisationIdToView);
     if (!isset($dronesResponse['error'])) {
         $stats['drones']['totaal'] = count($dronesResponse);
         $stats['drones']['actief'] = count(array_filter($dronesResponse, fn($d) => ($d['isActive'] ?? 0) == 1));
     }
 
+    // Haal het aantal vluchten op.
     $flightsResponse = callMainApi($mainApiBaseUrl . '/vluchten?DFPPVlucht_OrganisatieId=' . $organisationIdToView);
     if (!isset($flightsResponse['error'])) {
         $stats['vluchten']['totaal'] = count($flightsResponse);
+        // Bereken het aantal vluchten in de afgelopen maand.
         $oneMonthAgo = new DateTime('-1 month');
         $stats['vluchten']['maand'] = count(array_filter($flightsResponse, function ($flight) use ($oneMonthAgo) {
             $flightDateStr = $flight['DFPPVlucht_Datum'] ?? null;
@@ -108,20 +138,25 @@ if ($apiOrgDetailsSuccess) {
                     $flightDate = new DateTime($flightDateStr);
                     return $flightDate >= $oneMonthAgo;
                 } catch (Exception $e) {
+                    // Negeer ongeldige datums
                 }
             }
             return false;
         }));
     }
 
+    // Haal het aantal overige assets op.
     $assetsResponse = callMainApi($mainApiBaseUrl . '/overige_assets?eigenaar=' . $organisationIdToView);
     if (!isset($assetsResponse['error'])) {
         $stats['assets']['totaal'] = count($assetsResponse);
     }
 }
 
-// Styling & rendering
+// --- STAP 6: PAGINA-INSTELLINGEN VOOR DE TEMPLATE ---
+
+// Bepaal de titel van de pagina.
 $headTitle = htmlspecialchars($organization['organisatienaam'] ?? 'Organisatie Detail');
+// Stel een standaard logo in als de organisatie er geen heeft.
 $orgLogoUrl = $organization['logoUrl'] ?? 'https://via.placeholder.com/120/EEEEEE/888888?text=ORG+Logo';
 
 ?>
@@ -132,11 +167,13 @@ $orgLogoUrl = $organization['logoUrl'] ?? 'https://via.placeholder.com/120/EEEEE
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $headTitle ?></title>
+    <!-- Laad externe stylesheets voor styling -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
+        /* Dit is de originele styling, 1-op-1 overgenomen. */
         body {
             background-color: #f0f2f5;
             font-family: 'Montserrat', sans-serif;
@@ -309,43 +346,12 @@ $orgLogoUrl = $organization['logoUrl'] ?? 'https://via.placeholder.com/120/EEEEE
         .btn-edit-details:hover {
             background-color: #2563eb;
         }
-
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            padding: 10px 15px;
-            font-weight: 500;
-            border-radius: 8px;
-            transition: all 0.2s ease;
-        }
-
-        .btn-primary {
-            background-color: #3b82f6;
-            border-color: #3b82f6;
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background-color: #2563eb;
-            border-color: #2563eb;
-        }
-
-        .btn-secondary {
-            background-color: #e2e8f0;
-            border-color: #cbd5e0;
-            color: #4a5568;
-        }
-
-        .btn-secondary:hover {
-            background-color: #cbd5e0;
-            border-color: #a0aec0;
-        }
     </style>
 </head>
 
 <body>
     <div class="main-container">
+        <!-- Kruimelpad-navigatie bovenaan de pagina -->
         <div class="p-4 border-bottom d-flex justify-content-between align-items-center">
             <nav class="text-sm text-gray-600">
                 <a href="dashboard.php" class="text-blue-500 hover:underline">Dashboard</a>
@@ -353,97 +359,79 @@ $orgLogoUrl = $organization['logoUrl'] ?? 'https://via.placeholder.com/120/EEEEE
                 <span class="font-medium text-gray-800"><?= htmlspecialchars($organization['organisatienaam'] ?? 'Detail') ?></span>
             </nav>
         </div>
-        <?php if ($pageErrorMessage): ?>
-            <div class="alert alert-danger mx-4 mt-3" role="alert"><?= htmlspecialchars($pageErrorMessage) ?></div>
-        <?php else: ?>
 
-            <!-- Profiel Header -->
+        <?php if ($pageErrorMessage): ?>
+            <!-- Toon een foutmelding als er iets mis is gegaan bij het ophalen van de data -->
+            <div class="alert alert-danger mx-4 mt-3" role="alert"><?= $pageErrorMessage ?></div>
+        <?php else: ?>
+            <!-- Toon de pagina-inhoud als alles goed is gegaan -->
+
+            <!-- Organisatie Header met logo en naam -->
             <div class="profile-header-card">
                 <div class="profile-img-container">
                     <img src="<?= htmlspecialchars($orgLogoUrl) ?>" alt="Organisatie Logo">
                 </div>
                 <h1><?= htmlspecialchars($organization['organisatienaam'] ?? 'N/A') ?></h1>
                 <p class="mb-0"><?= htmlspecialchars(($organization['plaats'] ?? 'N/A') . ', ' . ($organization['land'] ?? 'N/A')) ?></p>
-                <div class="d-flex align-items-center justify-content-center mt-3">
-                    <span class="text-warning me-2">Score:</span> 4.7 <i class="fas fa-star text-warning ms-1"></i> (dummy)
-                </div>
             </div>
 
-            <!-- Statistieken Grid -->
+            <!-- Statistieken Grid met kaarten -->
             <div class="stats-grid">
                 <div class="stat-card-small stat-card-personeel">
                     <div class="value"><?= htmlspecialchars($stats['personeel']['totaal']) ?></div>
                     <div class="label">Totaal Personeel</div>
-                    <a href="personeelLijst.php?organisatieId=<?= htmlspecialchars($organization['organisatieId']) ?>" class="link">Bekijk <i class="fas fa-chevron-right ms-1"></i></a>
+                    <a href="personeelLijst.php?organisatieId=<?= htmlspecialchars($organization['organisatieId']) ?>" class="link">Bekijk</a>
                 </div>
                 <div class="stat-card-small stat-card-drones">
                     <div class="value"><?= htmlspecialchars($stats['drones']['totaal']) ?></div>
                     <div class="label">Totaal Drones</div>
-                    <a href="dronesLijst.php?organisatieId=<?= htmlspecialchars($organization['organisatieId']) ?>" class="link">Bekijk <i class="fas fa-chevron-right ms-1"></i></a>
+                    <a href="dronesLijst.php?organisatieId=<?= htmlspecialchars($organization['organisatieId']) ?>" class="link">Bekijk</a>
                 </div>
                 <div class="stat-card-small stat-card-vluchten">
                     <div class="value"><?= htmlspecialchars($stats['vluchten']['totaal']) ?></div>
                     <div class="label">Vluchten Totaal</div>
-                    <a href="vluchtenLijst.php?organisatieId=<?= htmlspecialchars($organization['organisatieId']) ?>" class="link">Bekijk <i class="fas fa-chevron-right ms-1"></i></a>
+                    <a href="vluchtenLijst.php?organisatieId=<?= htmlspecialchars($organization['organisatieId']) ?>" class="link">Bekijk</a>
                 </div>
                 <div class="stat-card-small stat-card-assets">
                     <div class="value"><?= htmlspecialchars($stats['assets']['totaal']) ?></div>
                     <div class="label">Overige Assets</div>
-                    <a href="assetsLijst.php?organisatieId=<?= htmlspecialchars($organization['organisatieId']) ?>" class="link">Bekijk <i class="fas fa-chevron-right ms-1"></i></a>
+                    <a href="assetsLijst.php?organisatieId=<?= htmlspecialchars($organization['organisatieId']) ?>" class="link">Bekijk</a>
                 </div>
             </div>
 
-            <!-- Algemene Gegevens -->
+            <!-- Sectie met algemene gegevens van de organisatie -->
             <div class="section-content">
                 <div class="section-title">
                     Algemene Gegevens
                     <a href="organisatieBewerken.php?id=<?= htmlspecialchars($organization['organisatieId']) ?>" class="btn-edit-details">
-                        <i class="fas fa-pencil-alt me-2"></i>Bewerken
+                        Bewerken
                     </a>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-4">
-                    <div class="detail-item"><i class="fas fa-tag"></i>Naam: <strong><?= htmlspecialchars($organization['organisatienaam'] ?? 'N/A') ?></strong></div>
-                    <div class="detail-item"><i class="fas fa-building"></i>KVK Nummer: <strong><?= htmlspecialchars($organization['kvkNummer'] ?? 'N.v.t.') ?></strong></div>
-                    <div class="detail-item"><i class="fas fa-map-marker-alt"></i>Adres: <strong><?= htmlspecialchars($organization['adres'] ?? 'N.v.t.') ?></strong></div>
-                    <div class="detail-item"><i class="fas fa-mail-bulk"></i>Postcode: <strong><?= htmlspecialchars($organization['postcode'] ?? 'N.v.t.') ?></strong></div>
-                    <div class="detail-item"><i class="fas fa-city"></i>Plaats: <strong><?= htmlspecialchars($organization['plaats'] ?? 'N.v.t.') ?></strong></div>
-                    <div class="detail-item"><i class="fas fa-globe"></i>Land: <strong><?= htmlspecialchars($organization['land'] ?? 'N.v.t.') ?></strong></div>
-                    <div class="detail-item"><i class="fas fa-power-off"></i>Actief: <strong><?= ($organization['isActive'] ?? 0) ? 'Ja' : 'Nee' ?></strong></div>
-                    <div class="detail-item"><i class="fas fa-id-badge"></i>Entry ID: <strong><?= htmlspecialchars($organization['_entry_ID'] ?? 'N.v.t.') ?></strong></div>
-                    <div class="detail-item"><i class="fas fa-calendar-alt"></i>Entry Datum: <strong>
-                            <?php
-                            if (isset($organization['_entry_Date'])) {
-                                try {
-                                    $date = new DateTime($organization['_entry_Date']);
-                                    echo htmlspecialchars($date->format('Y-m-d H:i'));
-                                } catch (Exception $e) {
-                                    echo 'Ongeldige datum';
-                                }
-                            } else {
-                                echo 'N.v.t.';
-                            }
-                            ?>
-                        </strong></div>
+                    <div class="detail-item">Naam: <strong><?= htmlspecialchars($organization['organisatienaam'] ?? 'N/A') ?></strong></div>
+                    <div class="detail-item">KVK Nummer: <strong><?= htmlspecialchars($organization['kvkNummer'] ?? 'N.v.t.') ?></strong></div>
+                    <div class="detail-item">Adres: <strong><?= htmlspecialchars($organization['adres'] ?? 'N.v.t.') ?></strong></div>
+                    <div class="detail-item">Postcode: <strong><?= htmlspecialchars($organization['postcode'] ?? 'N.v.t.') ?></strong></div>
+                    <div class="detail-item">Plaats: <strong><?= htmlspecialchars($organization['plaats'] ?? 'N.v.t.') ?></strong></div>
+                    <div class="detail-item">Land: <strong><?= htmlspecialchars($organization['land'] ?? 'N.v.t.') ?></strong></div>
                 </div>
             </div>
 
-            <!-- Contactgegevens Dynamisch -->
+            <!-- Sectie met contactgegevens van de organisatie -->
             <div class="section-content">
                 <h2 class="section-title">Contact Informatie</h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-4">
                     <div class="detail-item">
-                        <i class="fas fa-phone"></i>Telefoon:
-                        <strong><?= !empty($organization['telefoon']) ? htmlspecialchars($organization['telefoon']) : 'N.v.t.' ?></strong>
+                        Telefoon: <strong><?= !empty($organization['telefoon']) ? htmlspecialchars($organization['telefoon']) : 'N.v.t.' ?></strong>
                     </div>
                     <div class="detail-item">
-                        <i class="fas fa-envelope"></i>E-mail:
-                        <strong><?= !empty($organization['email']) ? htmlspecialchars($organization['email']) : 'N.v.t.' ?></strong>
+                        E-mail: <strong><?= !empty($organization['email']) ? htmlspecialchars($organization['email']) : 'N.v.t.' ?></strong>
                     </div>
                     <div class="detail-item">
-                        <i class="fas fa-link"></i>Website:
+                        Website:
                         <strong>
                             <?php if (!empty($organization['website'])): ?>
-                                <a href="<?= htmlspecialchars($organization['website']) ?>" target="_blank" rel="noopener noreferrer"><?= htmlspecialchars($organization['website']) ?></a>
+                                <a href="<?= htmlspecialchars($organization['website']) ?>" target="_blank"><?= htmlspecialchars($organization['website']) ?></a>
                             <?php else: ?>
                                 N.v.t.
                             <?php endif; ?>

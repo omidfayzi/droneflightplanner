@@ -138,7 +138,6 @@ if (
 
 // --- Template variabelen ---
 $showHeader = 1;
-$headTitle = fetchPropPrefTxt(46);
 $currentUserName = $_SESSION['user']['first_name'] ?? 'Onbekend';
 $gobackUrl = 1;
 $rightAttributes = 0;

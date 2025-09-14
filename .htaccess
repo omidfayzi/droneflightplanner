@@ -1,9 +1,16 @@
+# =============== ROUTING ===============
+
+# Mooie URLs → juiste bestanden in DroneFlightPlanner
+
 RewriteEngine On
 RewriteBase /
 
-# Zorg dat zowel de route met als zonder .php werkt
+# login → Keycloak flow
 
 RewriteRule ^login(\.php)?$ sso.php [L]
+
+# pagina's in de app
+
 RewriteRule ^dashboard(\.php)?$ app/views/dashboard.php [L]
 RewriteRule ^profile(\.php)?$ app/views/profile.php [L]
 RewriteRule ^welcome(\.php)?$ app/views/landing-page.php [L]

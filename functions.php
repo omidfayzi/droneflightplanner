@@ -34,36 +34,3 @@ function login()
         exit("exit");
     }
 }
-
-/**
- * fetchPropPrefTxt()
- * Haalt tekst op via een externe API en kijkt naar de gekozen taal.
- */
-function fetchPropPrefTxt($id)
-{
-    $url = "https://api2.droneflightplanner.nl/get-txt-with-id/$id";
-
-    $response = @file_get_contents($url); // Gebruik @ om waarschuwingen te onderdrukken
-
-    if ($response === false) {
-        error_log("Failed to fetch data from $url"); // Log de fout
-        return null; // Of een andere foutindicator
-    }
-
-    $data = json_decode($response, true);
-    if (!isset($data['users']) || empty($data['users'])) {
-        error_log("No data found for id: $id"); // Log de fout
-        return null; // Of een andere foutindicator
-    }
-
-    $user = $data['users'][0];
-
-    $language_id = $_COOKIE['language_id'] ?? "PropPrefTxt_En";
-
-    if (!isset($user[$language_id])) {
-        error_log("language id: $language_id, does not exist in the returned data for id: $id");
-        return null;
-    }
-
-    return $user[$language_id];
-}

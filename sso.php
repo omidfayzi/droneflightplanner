@@ -1,88 +1,78 @@
 <?php
-session_start();
+// =============== SSO MET KEYCLOAK ===============
+// Login flow voor DroneFlightPlanner met OAuth2 (Authorization Code Flow)
 
+session_start(); // nodig om 'state' en user-gegevens in te bewaren
+
+// Composer autoloader: hierdoor werken externe libraries (dotenv + keycloak-provider)
 require $_SERVER['DOCUMENT_ROOT'] . '/vendor/autoload.php';
-use Dotenv\Dotenv;
 
-// Laad .env-variabelen vanuit /var/www/env
+use Dotenv\Dotenv;
+use Stevenmaguire\OAuth2\Client\Provider\Keycloak;
+
+// 1) Config laden uit .env  → geen gevoelige info hardcoded
 $dotenv = Dotenv::createImmutable('/var/www/env');
 $dotenv->load();
 
-use Stevenmaguire\OAuth2\Client\Provider\Keycloak;
-
-// Keycloak-configuratie (uit .env)
-$keycloakAuthServerUrl = $_ENV['KEYCLOAK_AUTH_SERVER_URL'];
-$keycloakRealm         = $_ENV['KEYCLOAK_REALM'];
-$keycloakClientId      = $_ENV['KEYCLOAK_CLIENT_ID'];
-$keycloakClientSecret  = $_ENV['KEYCLOAK_CLIENT_SECRET'];
-$keycloakRedirectUri   = $_ENV['KEYCLOAK_REDIRECT_URI'];
-
-// Zet error reporting aan voor debugging
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
-// Configureer de Keycloak-provider
+// Keycloak-provider met instellingen uit .env
 $provider = new Keycloak([
-    'authServerUrl' => $keycloakAuthServerUrl,
-    'realm'         => $keycloakRealm,
-    'clientId'      => $keycloakClientId,
-    'clientSecret'  => $keycloakClientSecret,
-    'redirectUri'   => $keycloakRedirectUri
+    'authServerUrl' => $_ENV['KEYCLOAK_AUTH_SERVER_URL'], // basis-URL van Keycloak
+    'realm'         => $_ENV['KEYCLOAK_REALM'],           // realm = soort “omgeving” in Keycloak
+    'clientId'      => $_ENV['KEYCLOAK_CLIENT_ID'],       // ID van onze applicatie
+    'clientSecret'  => $_ENV['KEYCLOAK_CLIENT_SECRET'],   // geheim van onze applicatie
+    'redirectUri'   => $_ENV['KEYCLOAK_REDIRECT_URI']     // waar Keycloak na login naar terugstuurt
 ]);
 
-// Als de gebruiker al is ingelogd, doorsturen naar de welkomstpagina
+// 2) Als gebruiker al in $_SESSION staat → direct door naar welcome
 if (isset($_SESSION['user'])) {
     header('Location: /welcome');
     exit;
 }
 
-// Controleer op Keycloak-fouten
+// 3) Als Keycloak een fout geeft (bijv. user annuleert login), toon die veilig
 if (isset($_GET['error'])) {
     die('Error: ' . htmlspecialchars($_GET['error']));
 }
 
-// Afhandeling van de Keycloak-redirect met 'code' en 'state'
+// 4) Gebruiker komt terug van Keycloak met code + state
 if (isset($_GET['code']) && isset($_GET['state'])) {
-    if (empty($_SESSION['oauth2state']) || $_GET['state'] !== $_SESSION['oauth2state']) {
-        unset($_SESSION['oauth2state']);
-        die('Invalid state.');
+    // Controleer state → bescherming tegen CSRF-aanval
+    if ($_GET['state'] !== ($_SESSION['oauth2state'] ?? '')) {
+        die('Invalid state');
     }
-    
+
     try {
-        // Wissel de autorisatiecode in voor een access token
+        // Wissel authorization code om voor access token
         $token = $provider->getAccessToken('authorization_code', [
             'code' => $_GET['code']
         ]);
-        
-        // Haal de gebruikersinformatie op
-        $user = $provider->getResourceOwner($token);
-        $userData = $user->toArray();
-        
-        // Sla gebruikersgegevens op in de sessie
+
+        // Haal gebruikersinfo op met het token
+        $userData = $provider->getResourceOwner($token)->toArray();
+
+        // Zet belangrijkste gegevens in sessie → gebruiker is nu "ingelogd"
         $_SESSION['user'] = [
-            'id'         => $userData['sub'] ?? 'Unknown',
-            'first_name' => $userData['given_name'] ?? 'Unknown',
-            'last_name'  => $userData['family_name'] ?? 'Unknown',
-            'email'      => $userData['email'] ?? 'No email',
-            'username'   => $userData['preferred_username'] ?? 'No username'
+            'id'       => $userData['sub'] ?? 'Unknown',
+            'username' => $userData['preferred_username'] ?? 'Unknown',
+            'email'    => $userData['email'] ?? 'No email'
         ];
-        
-        // Doorsturen naar de welkomstpagina
+
+        // Stuur gebruiker naar de welcome-pagina van DroneFlightPlanner
         header('Location: /welcome');
         exit;
     } catch (Exception $e) {
-        die('Failed to get access token or user details: ' . $e->getMessage());
+        // Als ophalen token/user-data faalt
+        die('Login failed: ' . htmlspecialchars($e->getMessage()));
     }
 }
 
-// Als er geen 'code' aanwezig is, start dan het loginproces
-if (!isset($_GET['code'])) {
-    $authUrl = $provider->getAuthorizationUrl([
-        'scope' => 'openid profile email'
-    ]);
-    $_SESSION['oauth2state'] = $provider->getState();
-    header('Location: ' . $authUrl);
-    exit;
-}
-?>
+// 5) Eerste keer /login → nog geen code → start loginproces
+// Maak login-URL bij Keycloak en onthoud unieke 'state'
+$authUrl = $provider->getAuthorizationUrl([
+    'scope' => 'openid profile email' // vraag id, profiel en e-mail op
+]);
+$_SESSION['oauth2state'] = $provider->getState();
+
+// Stuur gebruiker door naar Keycloak login
+header('Location: ' . $authUrl);
+exit;

@@ -5,40 +5,30 @@
 session_start();
 
 require_once __DIR__ . '/../../config/config.php';
-require_once __DIR__ . '/../../functions.php'; // Zorg dat fetchPropPrefTxt() en login() hierin zitten.
+require_once __DIR__ . '/../../functions.php';
 
-// Login functie aanroepen (moet $_SESSION['user']['id'] instellen)
+// De login() functie controleert of de gebruiker is ingelogd.
 login();
 
-// --- Valideer gebruikerssessie ---
+// --- STAP 1: GEBRUIKER VALIDEREN ---
+// Haal de gebruikersgegevens op uit de sessie.
 $user = $_SESSION['user'] ?? [];
 if (empty($user) || !isset($user['id'])) {
+    // Als er geen gebruiker in de sessie zit, stuur terug naar de landingspagina.
     $_SESSION['form_error'] = "U bent niet ingelogd of uw sessie is verlopen.";
-    header("Location: landing-page.php"); // Of naar de inlogpagina
+    header("Location: landing-page.php");
     exit;
 }
 
+// Sla de gebruikersgegevens op in variabelen voor makkelijker gebruik.
+// htmlspecialchars() wordt gebruikt om XSS-aanvallen te voorkomen.
 $loggedInUserId = $user['id'];
 $userName = htmlspecialchars($user['first_name'] ?? 'Onbekend', ENT_QUOTES, 'UTF-8');
-// Vul $user['last_name'] en $user['email'] indien deze beschikbaar zijn in $_SESSION['user']
 $userLastName = htmlspecialchars($user['last_name'] ?? '', ENT_QUOTES, 'UTF-8');
 $userEmail = htmlspecialchars($user['email'] ?? 'geen@email.com', ENT_QUOTES, 'UTF-8');
 
-// Teksten dynamisch ophalen (als fetchPropPrefTxt() werkt)
-$txt = [
-    'title' => fetchPropPrefTxt(19) ?: 'Profiel',
-    'language' => fetchPropPrefTxt(22) ?: 'Taal',
-    'language_nl' => fetchPropPrefTxt(20) ?: 'Nederlands',
-    'language_en' => fetchPropPrefTxt(21) ?: 'Engels',
-    'logout' => fetchPropPrefTxt(13) ?: 'Uitloggen',
-    'idin_start' => fetchPropPrefTxt(23) ?: 'Start verificatie',
-    'idin_unverified' => fetchPropPrefTxt(24) ?: 'Identiteit niet geverifieerd',
-    'idin_verified' => fetchPropPrefTxt(10) ?: 'Geverifieerd',
-    'organization' => fetchPropPrefTxt(26) ?: 'Organisatie',
-    'save' => fetchPropPrefTxt(25) ?: 'Opslaan'
-];
-
-// Configuratie laden voor API-URL's (via Dotenv in config.php)
+// --- STAP 2: API-CONFIGURATIE & COMMUNICATIE ---
+// Definieer de API-endpoints. Deze worden uit het .env bestand gehaald.
 if (!defined('USER_ORG_API_BASE_URL')) {
     define('USER_ORG_API_BASE_URL', $_ENV['USER_ORG_DATABASE_BASE_URL'] ?? 'http://devserv01.holdingthedrones.com:4539');
 }
@@ -55,17 +45,15 @@ $userOrgFunctiesApiUrl = USER_ORG_FUNCTIES_ENDPOINT;
 $userOrgOrganisatiesApiUrl = USER_ORG_ORGANISATIES_ENDPOINT;
 $userOrgBearerToken = USER_ORG_BEARER_TOKEN;
 
-
-// --- GECENTRALISEERDE API HULPFUNCTIE (met BEARER TOKEN) ---
+/**
+ * Functie om een API-call te maken met een Bearer Token.
+ */
 function callUserOrgApi(string $url, string $token): array
 {
     $ch = curl_init($url);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_HTTPHEADER => [
-            'Accept: application/json',
-            'Authorization: Bearer ' . $token
-        ],
+        CURLOPT_HTTPHEADER => ['Accept: application/json', 'Authorization: Bearer ' . $token],
         CURLOPT_TIMEOUT => 10,
     ]);
     $resp = curl_exec($ch);
@@ -74,97 +62,55 @@ function callUserOrgApi(string $url, string $token): array
 
     if ($code !== 200 || $resp === false) {
         $error = curl_error($ch) ?: "HTTP Code $code";
-        error_log("User/Org API Error ($url): $error - Response: " . ($resp ?: '(empty)'));
+        error_log("User/Org API Error ($url): $error");
         return ['error' => $error];
     }
-    $json = json_decode($resp, true);
-    return is_array($json) ? $json : ['error' => "Invalid JSON response from User/Org API."];
+    return json_decode($resp, true) ?: ['error' => "Invalid JSON response"];
 }
 
-
-// --- DATA OPHALEN VOOR DROPDOWNS (Organisaties en Functies) ---
+// --- STAP 3: DATA OPHALEN VOOR DROPDOWNS ---
 $organisations = [];
 $functions = [];
 
-// Haal organisaties op
-if (!empty($userOrgOrganisatiesApiUrl) && !empty($userOrgBearerToken)) {
-    $organisationsData = callUserOrgApi($userOrgOrganisatiesApiUrl, $userOrgBearerToken);
-    if (!isset($organisationsData['error'])) {
-        $organisations = array_map(function ($org) {
-            return ['id' => $org['organisatieId'], 'name' => $org['organisatienaam']];
-        }, $organisationsData);
-    } else {
-        error_log("Fout bij ophalen organisaties voor profiel: " . $organisationsData['error']);
-    }
+// Haal de lijst met organisaties op.
+$organisationsData = callUserOrgApi($userOrgOrganisatiesApiUrl, $userOrgBearerToken);
+if (!isset($organisationsData['error'])) {
+    $organisations = array_map(fn($org) => ['id' => $org['organisatieId'], 'name' => $org['organisatienaam']], $organisationsData);
 }
 
-// Haal functies op
-if (!empty($userOrgFunctiesApiUrl) && !empty($userOrgBearerToken)) {
-    $functionsData = callUserOrgApi($userOrgFunctiesApiUrl, $userOrgBearerToken);
-    if (!isset($functionsData['error'])) {
-        $functions = array_map(function ($func) {
-            return ['id' => $func['functieId'], 'name' => $func['functieNaam']];
-        }, $functionsData);
-    } else {
-        error_log("Fout bij ophalen functies voor profiel: " . $functionsData['error']);
-    }
+// Haal de lijst met functies (rollen) op.
+$functionsData = callUserOrgApi($userOrgFunctiesApiUrl, $userOrgBearerToken);
+if (!isset($functionsData['error'])) {
+    $functions = array_map(fn($func) => ['id' => $func['functieId'], 'name' => $func['functieNaam']], $functionsData);
 }
 
-
-// --- AFHANDELING VAN AJAX POST REQUESTS (Opslaan Taal/Org/Functie selecties) ---
-// Deze POST requests komen van JavaScript en updaten sessie/voorkeuren.
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
-    $inputJSON = file_get_contents('php://input');
-    $requestData = json_decode($inputJSON, true);
-
+// --- STAP 4: AJAX REQUEST AFHANDELING ---
+// Dit blok code wordt alleen uitgevoerd als de pagina wordt aangeroepen door JavaScript.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_SERVER['HTTP_X_REQUESTED_WITH'])) {
+    $requestData = json_decode(file_get_contents('php://input'), true);
     $action = $requestData['action'] ?? '';
 
-    // Action: Save Language Preference
+    // Actie om de taalvoorkeur op te slaan.
     if ($action === 'save_language') {
-        $selectedLanguage = $requestData['language'] ?? 'nl';
-        // Hier zou je $loggedInUserId kunnen gebruiken om de voorkeurstaal in je DB op te slaan
-        $_SESSION['language'] = $selectedLanguage; // Update sessie voor volgende pagina's
+        $_SESSION['language'] = $requestData['language'] ?? 'nl';
         http_response_code(200);
         echo json_encode(['status' => 'success', 'message' => 'Taalvoorkeur opgeslagen!']);
         exit;
     }
 
-    // Action: Save Organization/Function Selection
+    // Actie om de organisatie- en functiekeuze op te slaan.
     if ($action === 'save_org_function') {
-        $selectedOrgId = $requestData['organisation_id'] ?? null;
-        $selectedFunctionId = $requestData['function_id'] ?? null;
-
-        if ($selectedOrgId === null || $selectedFunctionId === null || $selectedOrgId === '' || $selectedFunctionId === '') {
-            http_response_code(400);
-            echo json_encode(['status' => 'error', 'message' => 'Geen organisatie of functie geselecteerd.']);
-            exit;
-        }
-
-        // Opslaan in de sessie (consistent met landing-page.php)
-        $_SESSION['selected_organisation_id'] = ($selectedOrgId === '0') ? null : (int)$selectedOrgId;
-        $_SESSION['selected_function_id'] = (int)$selectedFunctionId;
-
-        // Dit is de cruciale update voor de user_id die door de SORA API wordt gebruikt!
-        // We stellen de actieve 'user_id' voor de flow in als de ingelogde user's ID
-        // DIT MOET EEN BESTAAND USER ID IN DE SORA API DATABASE ZIJN!
-        // Het 'gebruiker' concept hier is niet 'selecteer een ANDERE gebruiker om deze flow uit te voeren als',
-        // maar 'uitvoeren AS ingelogde gebruiker, of als onderdeel van een organisatie'.
-        // Dus de $_SESSION['user_id'] die voor SORA gebruikt wordt, is gewoon de ingelogde user's ID.
-        // Als je functie-ID's ook gebruikers-ID's zouden kunnen zijn, is dit complexer.
-        // Maar volgens /functies endpoint is 'functie' een ROL.
-
+        $_SESSION['selected_organisation_id'] = ($requestData['organisation_id'] === '0') ? null : (int)$requestData['organisation_id'];
+        $_SESSION['selected_function_id'] = (int)$requestData['function_id'];
         http_response_code(200);
         echo json_encode(['status' => 'success', 'message' => 'Organisatie- en functieselectie opgeslagen!']);
         exit;
     }
 
     http_response_code(400);
-    echo json_encode(['status' => 'error', 'message' => 'Ongeldige AJAX-actie.']);
+    echo json_encode(['status' => 'error', 'message' => 'Ongeldige actie.']);
     exit;
 }
-
-
-// --- HUIDIGE PAGINA LAYOUT HTML ---
 ?>
 <!DOCTYPE html>
 <html lang="nl">
@@ -172,11 +118,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_SERVER['HTTP_X_REQUESTED_W
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= $txt['title'] ?></title>
+    <title>Profiel</title>
+    <!-- Externe stylesheets -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         /* CSS Variabelen voor kleuren consistentie */
         :root {
@@ -526,66 +472,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_SERVER['HTTP_X_REQUESTED_W
 </head>
 
 <body>
-    <!-- HEADER BAR BOVENIN, als die wordt geinclude via component/header.php -->
-    <?php // include $headerPath; // Deel van jouw bestaande app structuur 
-    ?>
-
     <div class="main-page-container">
-        <!-- TOP NAVIGATIE / KRUIMELPAD -->
+        <!-- Kruimelpad-navigatie bovenaan de pagina -->
         <div class="top-nav-bar">
-            <nav class="text-sm text-gray-600">
-                <a href="dashboard.php" class="font-semibold">Dashboard</a>
-                <span class="mx-2">/</span>
-                <span>Mijn Profiel</span>
+            <nav>
+                <a href="dashboard.php">Dashboard</a> / <span>Mijn Profiel</span>
             </nav>
-            <a href="dashboard.php" class="btn-back-dashboard">
-                <i class="fas fa-arrow-left me-2"></i> Terug naar Dashboard
-            </a>
+            <a href="dashboard.php">Terug naar Dashboard</a>
         </div>
 
-        <!-- CENTRALE PROFIEL KAART -->
+        <!-- De centrale kaart met alle profielinformatie -->
         <div class="profile-card">
-            <!-- Profiel Header Sectie (Jouw naam, e-mail, logout) -->
+            <!-- De donkere header met gebruikersnaam en avatar -->
             <div class="profile-header-section">
-                <div class="avatar">
-                    <?= strtoupper(substr($user['first_name'] ?? 'U', 0, 1)) ?>
-                </div>
-                <h1><?= $user['first_name'] ?? 'Onbekend' ?> <?= $userLastName ?></h1>
+                <div class="avatar"><?= strtoupper(substr($userName, 0, 1)) ?></div>
+                <h1><?= $userName ?> <?= $userLastName ?></h1>
                 <p><?= $userEmail ?></p>
-                <a href="/logout.php" class="logout-button">
-                    <svg fill="currentColor" viewBox="0 0 24 24" class="w-5 h-5">
-                        <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                    </svg>
-                    <span><?= $txt['logout'] ?></span>
-                </a>
+                <a href="/logout.php">Uitloggen</a>
             </div>
 
-            <!-- Instellingen & Voorkeuren Secties -->
+            <!-- Sectie voor het instellen van de taal -->
             <div class="profile-section">
-                <h2><?= $txt['language'] ?></h2>
-                <label for="languageSelect" class="form-label">Taalvoorkeur:</label>
+                <h2>Taal</h2>
+                <label for="languageSelect">Taalvoorkeur:</label>
                 <select id="languageSelect" class="form-select-full">
-                    <option value="nl"><?= $txt['language_nl'] ?></option>
-                    <option value="en"><?= $txt['language_en'] ?></option>
+                    <option value="nl">Nederlands</option>
+                    <option value="en">Engels</option>
                 </select>
-                <button type="submit" onclick="saveLanguagePreference()" class="btn-action">Opslaan taalvoorkeur</button>
+                <button type="button" onclick="saveLanguagePreference()">Opslaan taalvoorkeur</button>
                 <div id="languageResponseMessage" class="response-message hidden"></div>
             </div>
 
-            <!-- Organisatie & Functie Selectie Sectie -->
+            <!-- Sectie voor het kiezen van organisatie en functie -->
             <div class="profile-section">
                 <h2>Organisatie & Functie</h2>
-                <div class="form-field-group">
-                    <label for="orgSelect" class="form-label"><?= $txt['organization'] ?>:</label>
+                <div>
+                    <label for="orgSelect">Organisatie:</label>
                     <select id="orgSelect" class="form-select-full">
-                        <option value="0"><?= htmlspecialchars($user['first_name'] ?? 'Individueel') ?> (Persoonlijk)</option>
+                        <option value="0"><?= $userName ?> (Persoonlijk)</option>
                         <?php foreach ($organisations as $org): ?>
                             <option value="<?= htmlspecialchars($org['id']) ?>"><?= htmlspecialchars($org['name']) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="form-field-group">
-                    <label for="functionSelect" class="form-label">Geselecteerde Functie:</label>
+                <div>
+                    <label for="functionSelect">Geselecteerde Functie:</label>
                     <select id="functionSelect" class="form-select-full">
                         <option value="" disabled selected>Selecteer uw functie</option>
                         <?php foreach ($functions as $func): ?>
@@ -593,214 +524,151 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_SERVER['HTTP_X_REQUESTED_W
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <button type="submit" onclick="saveOrgAndFunction()" class="btn-action">Selectie opslaan</button>
+                <button type="button" onclick="saveOrgAndFunction()">Selectie opslaan</button>
                 <div id="orgFunctionResponseMessage" class="response-message hidden"></div>
             </div>
 
-            <!-- IDIN Verificatie Sectie -->
+            <!-- Sectie voor iDIN-verificatie -->
             <div class="verification-section">
                 <h2>Identiteitsverificatie</h2>
                 <div id="idinStatus" class="idin-status-box">
                     <div class="status-icon-text">
                         <i class="fas fa-spinner fa-spin status-icon"></i>
-                        <span class="status-text loading-text"><?= $txt['idin_unverified'] ?>...</span>
+                        <span class="status-text loading-text">Status ophalen...</span>
                     </div>
                 </div>
-                <button type="button" onclick="startIdinVerification()" class="idin-start-button hidden">Start IDIN verificatie</button>
+                <button type="button" onclick="startIdinVerification()" id="startIdinBtn" class="idin-start-button hidden">Start IDIN verificatie</button>
             </div>
-
         </div>
     </div>
 
-    <!-- Bootstrap 5 JavaScript Bundle met Popper (op het einde van de body) -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
     <script>
-        // JS GLOBAL REFERENCES
-        const currentLoggedInUserId = <?= json_encode($loggedInUserId) ?>; // PHP-variabele in JS context
+        // --- JAVASCRIPT VOOR DE INTERACTIVITEIT VAN DE PAGINA ---
 
-        // AJAX POST UTILITY FUNCTION (generiek voor deze pagina)
-        async function postJson(url, payload) {
-            try {
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    body: JSON.stringify(payload)
+        /**
+         * Stuurt de geselecteerde taal naar de server om op te slaan.
+         */
+        function saveLanguagePreference() {
+            const selectedLanguage = document.getElementById('languageSelect').value;
+            showMessage('languageResponseMessage', 'Bezig met opslaan...', 'info');
+
+            postJson(window.location.href, {
+                    action: 'save_language',
+                    language: selectedLanguage
+                })
+                .then(response => {
+                    showMessage('languageResponseMessage', response.message, 'success');
+                })
+                .catch(error => {
+                    showMessage('languageResponseMessage', 'Opslaan mislukt: ' + error.message, 'error');
                 });
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => response.text());
-                    throw new Error(errorData.message || JSON.stringify(errorData) || `HTTP error! status: ${response.status}`);
-                }
-                return await response.json();
-            } catch (error) {
-                console.error('AJAX Error:', error);
-                throw error; // Re-throw for specific handlers
-            }
         }
 
-        // --- HULPFUNCTIES VOOR DE UI & STATUS MELDINGEN ---
-        function showMessage(elementId, message, type = 'info') {
+        /**
+         * Stuurt de geselecteerde organisatie en functie naar de server om op te slaan.
+         */
+        function saveOrgAndFunction() {
+            const selectedOrgId = document.getElementById('orgSelect').value;
+            const selectedFunctionId = document.getElementById('functionSelect').value;
+
+            if (!selectedFunctionId) {
+                alert('Selecteer alstublieft een functie.');
+                return;
+            }
+
+            showMessage('orgFunctionResponseMessage', 'Bezig met opslaan...', 'info');
+
+            postJson(window.location.href, {
+                    action: 'save_org_function',
+                    organisation_id: selectedOrgId,
+                    function_id: selectedFunctionId
+                })
+                .then(response => {
+                    showMessage('orgFunctionResponseMessage', response.message, 'success');
+                    setTimeout(() => window.location.reload(), 1000);
+                })
+                .catch(error => {
+                    showMessage('orgFunctionResponseMessage', 'Opslaan mislukt: ' + error.message, 'error');
+                });
+        }
+
+        /**
+         * Een herbruikbare functie om data via een POST request te versturen.
+         */
+        async function postJson(url, payload) {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify(payload)
+            });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({
+                    message: 'Onbekende serverfout'
+                }));
+                throw new Error(errorData.message);
+            }
+            return response.json();
+        }
+
+        /**
+         * Toont een bericht (bv. succes of fout) aan de gebruiker.
+         */
+        function showMessage(elementId, message, type) {
             const div = document.getElementById(elementId);
-            if (!div) return;
-            div.classList.remove('hidden', 'success', 'error', 'info', 'alert-success', 'alert-danger', 'alert-info');
+            div.className = 'response-message ' + type;
             div.textContent = message;
-            if (type === 'success') div.classList.add('alert-success');
-            if (type === 'error') div.classList.add('alert-danger');
-            if (type === 'info') div.classList.add('alert-info');
         }
 
-        function hideMessage(elementId) {
-            const div = document.getElementById(elementId);
-            if (div) div.classList.add('hidden');
-        }
-
-        // --- DOMContentLoaded EVENT LISTENER ---
-        document.addEventListener('DOMContentLoaded', async () => {
-            const languageSelect = document.getElementById('languageSelect');
-            const orgSelect = document.getElementById('orgSelect');
-            const functionSelect = document.getElementById('functionSelect');
+        /**
+         * Simuleert het starten van de iDIN-verificatie.
+         */
+        function startIdinVerification() {
             const idinStatusDiv = document.getElementById('idinStatus');
             const startIdinBtn = document.getElementById('startIdinBtn');
-
-            // --- INSTELLEN INITIËLE TAALSELECTIE ---
-            const currentSelectedLanguage = '<?= htmlspecialchars($_SESSION['language'] ?? 'nl') ?>';
-            if (languageSelect) languageSelect.value = currentSelectedLanguage;
-
-            // --- INSTELLEN INITIËLE ORG/FUNCTIE SELECTIE ---
-            const currentSelectedOrgId = '<?= htmlspecialchars($_SESSION['selected_organisation_id'] ?? '0') ?>'; // '0' voor individueel
-            const currentSelectedFunctionId = '<?= htmlspecialchars($_SESSION['selected_function_id'] ?? '') ?>';
-
-            if (orgSelect) orgSelect.value = currentSelectedOrgId; // Let op: == vergelijking is cruciaal voor nummer vs string
-
-            // Functie Selectie: alleen als er een default functie in sessie is of er options zijn
-            if (functionSelect && functionSelect.options.length > 1) { // Check dat er meer is dan alleen de disabled placeholder
-                if (currentSelectedFunctionId !== '') {
-                    functionSelect.value = currentSelectedFunctionId;
-                    if (functionSelect.value !== currentSelectedFunctionId) { // Fallback als value niet bestaat (bijv. user has a role no longer in system)
-                        functionSelect.value = ''; // Reset to default placeholder
-                        console.warn('Selected function ID from session not found in dropdown options. Resetting to default.');
-                    }
-                } else {
-                    functionSelect.value = ''; // Selecteer placeholder indien niets is geselecteerd in sessie
-                }
-            } else {
-                // Als er geen functies zijn om uit te kiezen (of slechts de placeholder), forceer dan de placeholder.
-                if (functionSelect) functionSelect.value = '';
-            }
-
-            // --- iDIN STATUS INITIALISATIE ---
-            // Simuleer een check van de iDIN status bij het laden van de pagina
-            // In een echte implementatie: API call naar je iDIN backend om de status op te vragen.
-            const isIdinVerified = Math.random() > 0.7; // 30% kans om verified te zijn voor demo
-            setTimeout(() => { // Simuleer netwerklatentie voor IDIN
-                if (!idinStatusDiv) return;
-
-                const statusTextSpan = idinStatusDiv.querySelector('.status-text');
-                const statusIconTextDiv = idinStatusDiv.querySelector('.status-icon-text');
-
-                if (isIdinVerified) {
-                    statusIconTextDiv.innerHTML = `<i class="fas fa-check-circle text-success status-icon"></i><span class="status-text">${IDIN_TXT_VERIFIED}</span>`;
-                    startIdinBtn.classList.add('hidden'); // Verberg de knop als geverifieerd
-                } else {
-                    statusIconTextDiv.innerHTML = `<i class="fas fa-times-circle text-danger status-icon"></i><span class="status-text">${IDIN_TXT_UNVERIFIED}</span>`;
-                    startIdinBtn.classList.remove('hidden'); // Toon de knop
-                }
-                statusTextSpan.classList.remove('loading-text'); // Stop pulse animatie
-            }, 1500); // 1.5 seconde latIdency
-
-
-            // --- Event Listeners voor Opslaan ---
-            // Slaan taalvoorkeur op
-            document.getElementById('saveSettingsBtn').addEventListener('click', async () => {
-                const selectedLanguage = languageSelect.value;
-                showMessage('languageResponseMessage', 'Bezig met opslaan taalvoorkeur...', 'info');
-
-                try {
-                    const response = await postJson(window.location.href, {
-                        action: 'save_language',
-                        language: selectedLanguage
-                    });
-                    if (response.status === 'success') {
-                        showMessage('languageResponseMessage', response.message, 'success');
-                        // Opslaan in sessie is server-side, hier tonen we alleen melding.
-                        // window.location.reload(); // Herlaad pagina indien taal direct moet veranderen
-                    } else {
-                        showMessage('languageResponseMessage', response.message, 'error');
-                    }
-                } catch (error) {
-                    showMessage('languageResponseMessage', `Netwerkfout: ${error.message}`, 'error');
-                }
-            });
-
-            // Slaan Organisatie- en Functieselectie op
-            document.getElementById('saveOrgAndFunctionBtn').addEventListener('click', async () => {
-                const selectedOrgId = orgSelect.value;
-                const selectedFunctionId = functionSelect.value;
-                const responseDiv = document.getElementById('orgFunctionResponseMessage');
-
-                if (selectedOrgId === "" || functionSelect.selectedIndex === 0 || selectedFunctionId === "") {
-                    showMessage('orgFunctionResponseMessage', 'Selecteer alstublieft zowel een organisatie als een functie.', 'error');
-                    return;
-                }
-
-                showMessage('orgFunctionResponseMessage', 'Bezig met opslaan selectie...', 'info');
-                try {
-                    const response = await postJson(window.location.href, {
-                        action: 'save_org_function',
-                        organisation_id: selectedOrgId,
-                        function_id: selectedFunctionId
-                    });
-                    if (response.status === 'success') {
-                        showMessage('orgFunctionResponseMessage', response.message, 'success');
-                        // Na succesvol opslaan in sessie, redirect naar dashboard
-                        setTimeout(() => {
-                            window.location.href = 'dashboard.php';
-                        }, 1000);
-                    } else {
-                        showMessage('orgFunctionResponseMessage', response.message, 'error');
-                    }
-                } catch (error) {
-                    showMessage('orgFunctionResponseMessage', `Netwerkfout: ${error.message}`, 'error');
-                }
-            });
-
-            // Start IDIN verificatie
-            document.getElementById('startIdinBtn').addEventListener('click', async () => {
-                showMessage('idinStatus', 'Bezig met starten verificatie...', 'info');
-                startIdinVerification(); // Roep de iDIN flow aan
-            });
-
-            // --- HUIDIGE IDIN VERIFICATIE TEKSTEN (voor consistentie met de mock) ---
-            const IDIN_TXT_VERIFIED = "<?= $txt['idin_verified'] ?>";
-            const IDIN_TXT_UNVERIFIED = "<?= $txt['idin_unverified'] ?>";
-        }); // Einde DOMContentLoaded
-
-        // --- iDIN Mock Functionaliteit (gebruikt door IDIN verificatie sectie) ---
-        async function startIdinVerification() {
-            const idinStatusDiv = document.getElementById('idinStatus');
-            const startIdinBtn = document.getElementById('startIdinBtn');
-
-            // Simuleer een proces voor iDIN verificatie
             idinStatusDiv.innerHTML = `<div class="status-icon-text"><i class="fas fa-spinner fa-spin status-icon"></i><span class="status-text">Verificatie starten...</span></div>`;
-            startIdinBtn.classList.add('hidden'); // Verberg de knop tijdens het proces
+            startIdinBtn.classList.add('hidden');
 
             setTimeout(() => {
-                const verificationSuccessful = Math.random() > 0.3; // 70% kans op succes voor demo
-
-                if (verificationSuccessful) {
-                    idinStatusDiv.innerHTML = `<div class="status-icon-text"><i class="fas fa-check-circle text-success status-icon"></i><span class="status-text">${IDIN_TXT_VERIFIED}</span></div>`;
-                } else {
-                    idinStatusDiv.innerHTML = `<div class="status-icon-text"><i class="fas fa-times-circle text-danger status-icon"></i><span class="status-text">${IDIN_TXT_UNVERIFIED}</span></div>`;
-                    startIdinBtn.classList.remove('hidden'); // Toon knop opnieuw bij mislukking
-                }
-                // Update globale boodschap voor consistentie, al is dit lokaal binnen de div
-                showMessage('idinStatus', verificationSuccessful ? 'Verificatie voltooid.' : 'Verificatie mislukt. Probeer opnieuw.', verificationSuccessful ? 'success' : 'error');
-
-            }, 2000); // Simuleer 2 seconden proces
+                const isVerified = Math.random() > 0.3; // 70% kans op succes voor demo
+                updateIdinStatus(isVerified);
+            }, 2000);
         }
+
+        /**
+         * Werkt de iDIN-status in de UI bij.
+         */
+        function updateIdinStatus(isVerified) {
+            const idinStatusDiv = document.getElementById('idinStatus');
+            const startIdinBtn = document.getElementById('startIdinBtn');
+            const statusText = isVerified ? 'Geverifieerd' : 'Identiteit niet geverifieerd';
+            const statusIcon = isVerified ? 'fa-check-circle text-success' : 'fa-times-circle text-danger';
+
+            idinStatusDiv.innerHTML = `<div class="status-icon-text"><i class="fas ${statusIcon} status-icon"></i><span class="status-text">${statusText}</span></div>`;
+
+            if (!isVerified) {
+                startIdinBtn.classList.remove('hidden');
+            }
+        }
+
+        // Zodra de pagina volledig is geladen, stellen we de dropdowns in en controleren we de iDIN-status.
+        document.addEventListener('DOMContentLoaded', () => {
+            // Stel de dropdowns in op de huidige waarden uit de sessie.
+            const currentSelectedOrgId = '<?= $_SESSION['selected_organisation_id'] ?? '0' ?>';
+            const currentSelectedFunctionId = '<?= $_SESSION['selected_function_id'] ?? '' ?>';
+            document.getElementById('orgSelect').value = currentSelectedOrgId;
+            if (currentSelectedFunctionId) {
+                document.getElementById('functionSelect').value = currentSelectedFunctionId;
+            }
+
+            // Simuleer een check van de iDIN-status bij het laden.
+            setTimeout(() => {
+                const isVerified = Math.random() > 0.7; // 30% kans dat de gebruiker al geverifieerd is.
+                updateIdinStatus(isVerified);
+            }, 1500);
+        });
     </script>
 </body>
 

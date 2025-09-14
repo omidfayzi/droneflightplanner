@@ -1,0 +1,182 @@
+/*
+ * =================================================================
+ * Styling voor de Organisatie Registratie Pagina
+ * =================================================================
+ * Dit is de originele styling, 1-op-1 overgenomen uit het PHP-bestand.
+ */
+
+body {
+    background-color: #f5f7fa;
+    font-family: 'Montserrat', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    padding: 20px;
+    background-image: url('/app/assets/images/droneBackgroundImage.jpg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    backdrop-filter: blur(5px) brightness(0.7);
+}
+
+.container-wrapper {
+    background-color: rgba(255, 255, 255, 0.98);
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    padding: 40px;
+    width: 100%;
+    max-width: 800px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    overflow: visible;
+    margin: 20px 0;
+}
+
+.drone-visual-element {
+    width: 300px;
+    height: auto;
+    position: absolute;
+    top: 7%;
+    left: 65%;
+    z-index: 100;
+    filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.3));
+    pointer-events: none;
+}
+
+.logo-upload-container {
+    border: 2px dashed #a7bed3;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    background-color: #f7fafd;
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.logo-upload-container:hover {
+    background-color: #eaf1f8;
+    border-color: #7ab2e2;
+}
+
+.logo-preview {
+    max-width: 120px;
+    max-height: 120px;
+    border-radius: 8px;
+    margin-top: 15px;
+    object-fit: contain;
+    border: 1px solid #ddd;
+}
+
+.file-input {
+    display: none;
+}
+
+h1,
+h2 {
+    color: #2c3e50;
+    font-weight: 700;
+}
+
+.form-label {
+    font-weight: 600;
+    color: #34495e;
+    margin-bottom: 8px;
+}
+
+.form-control,
+.form-select {
+    border: 1px solid #dcdfe6;
+    border-radius: 8px;
+    padding: 12px 18px;
+    font-size: 0.95rem;
+    color: #34495e;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: #4a90e2;
+    box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.25);
+    outline: none;
+}
+
+.form-check-input {
+    margin-top: 0.3rem;
+}
+
+.form-check-label {
+    color: #4a5568;
+    font-weight: normal;
+}
+
+.btn-action {
+    padding: 12px 28px;
+    font-size: 1rem;
+    border-radius: 8px;
+    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.1s ease;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.btn-success {
+    background-color: #28a745;
+    color: white;
+    border-color: #28a745;
+}
+
+.btn-success:hover {
+    background-color: #218838;
+    transform: translateY(-2px);
+}
+
+.btn-secondary {
+    background-color: #f0f0f0;
+    color: #34495e;
+    border-color: #ccc;
+}
+
+.btn-secondary:hover {
+    background-color: #e0e0e0;
+    transform: translateY(-2px);
+}
+
+#responseMessage {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    right: 20px;
+    padding: 15px;
+    border-radius: 8px;
+    text-align: center;
+    font-weight: 600;
+    z-index: 10;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Klassen voor de response message */
+.response-message.success {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
+.response-message.error {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+.response-message.info {
+    background-color: #e2e8f0;
+    color: #4a5568;
+}
+
+.hidden {
+    display: none;
+}
+
+.required-asterisk {
+    color: #ef4444;
+    margin-left: 4px;
+}
